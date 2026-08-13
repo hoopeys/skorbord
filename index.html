@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Skorbord</title>
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Skorbord">
+<meta name="theme-color" content="#1E2A38">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #E8E5DB;
+    --paper-raised: #F1EEE4;
+    --rule: #C6C0AE;
+    --ink: #1E2A38;
+    --ink-soft: #5A6675;
+    --tile-bg: #1E2A38;
+    --tile-bg-negative: #5C2A2A;
+    --tile-text: #F3EFE4;
+    --green: #2F7A57;
+    --green-soft: #DCEBE2;
+    --red: #B33A3A;
+    --red-soft: #F3DEDE;
+    --amber: #C9932A;
+    --amber-soft: #F3E4BC;
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --font-display: 'Space Grotesk', 'Arial Narrow', sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+    --shadow: 0 2px 0 rgba(30,42,56,0.06), 0 8px 20px -12px rgba(30,42,56,0.25);
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100%;
+  }
+
+  .wrap{
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+
+  .screen-scroll{
+    padding-bottom: 24px;
+  }
+  #setup-screen .screen-scroll,
+  #end-screen .screen-scroll{
+    padding-bottom: 96px;
+  }
+  #game-screen .screen-scroll{
+    padding-bottom: 156px;
+  }
+
+  .screen-footer{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 20px -12px rgba(30,42,56,0.18);
+    z-index: 30;
+  }
+  .screen-footer-inner{
+    max-width: 948px;
+    margin: 0 auto;
+  }
+
+  header.top{
+    display:flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 4px 20px;
+  }
+  .eyebrow{
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  h1{
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(26px, 6vw, 34px);
+    margin: 2px 0 0;
+    letter-spacing: -0.01em;
+  }
+  .round-badge{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 6px 14px;
+    white-space: nowrap;
+  }
+
+  button{ font-family: var(--font-body); cursor: pointer; }
+
+  .hidden{ display:none !important; }
+
+  /* ---------- Setup screen ---------- */
+  .team-row-group{
+    margin-bottom: 10px;
+  }
+  .team-row{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    padding: 10px 10px 10px 16px;
+  }
+  .team-row.has-error{
+    border-color: var(--red);
+  }
+  .field-error{
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--red);
+    margin: 6px 2px 0 16px;
+  }
+  .team-row .swatch{
+    width: 10px; height: 10px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .team-row input[type="text"]{
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--ink);
+    padding: 8px 4px;
+    min-width: 0;
+    outline: none;
+    border-bottom: 2px solid transparent;
+  }
+  .team-row input[type="text"]:focus{
+    border-bottom: 2px solid var(--ink);
+  }
+  .team-row input[type="text"].input-error{
+    color: var(--red);
+    border-bottom: 2px solid var(--red);
+  }
+  .team-row input[type="text"].input-error:focus{
+    border-bottom: 2px solid var(--red);
+  }
+  .icon-btn{
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink-soft);
+    font-size: 16px;
+    line-height: 1;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover{ background: var(--red-soft); color: var(--red); border-color: var(--red); }
+  .icon-btn:disabled{ opacity: 0.35; cursor: not-allowed; background: var(--paper); color: var(--ink-soft); border-color: var(--rule); }
+  .download-btn{
+    width: 42px;
+    height: 42px;
+    color: var(--ink);
+    background: var(--paper-raised);
+    flex-shrink: 0;
+  }
+  .download-btn:hover{ background: var(--ink); color: var(--tile-text); border-color: var(--ink); }
+  .download-btn:disabled{ opacity: 0.5; cursor: wait; }
+
+  .add-team-btn{
+    width: 100%;
+    border: 1.5px dashed var(--rule);
+    background: transparent;
+    border-radius: var(--radius-md);
+    padding: 13px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--ink-soft);
+    margin-bottom: 26px;
+  }
+  .add-team-btn:hover{ border-color: var(--ink); color: var(--ink); }
+  .add-team-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
+  .primary-btn{
+    width: 100%;
+    border: none;
+    background: var(--ink);
+    color: var(--tile-text);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: 0.01em;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+  }
+  .primary-btn:active{ transform: translateY(1px); }
+  .primary-btn:disabled{
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .secondary-btn{
+    width: 100%;
+    border: 1px solid var(--rule);
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    padding: 13px;
+    border-radius: var(--radius-md);
+  }
+  .secondary-btn:hover{ background: var(--paper); }
+
+  /* ---------- Game screen ---------- */
+  .scoreboard{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .team-card{
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    padding: 14px 14px 16px;
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: var(--shadow);
+  }
+  .team-card .team-name{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+    text-align:center;
+    color: var(--ink);
+    margin-bottom: 10px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .score-tile{
+    width: 100%;
+    background: var(--tile-bg);
+    color: var(--tile-text);
+    border-radius: var(--radius-md);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(30px, 8vw, 40px);
+    text-align: center;
+    padding: 14px 4px 10px;
+    margin-bottom: 12px;
+    transition: background-color 0.2s ease;
+  }
+  .score-tile.negative{ background: var(--tile-bg-negative); }
+  .score-tile.bump{ animation: bump 0.22s ease; }
+  @keyframes bump{
+    0%{ transform: scale(1); }
+    40%{ transform: scale(1.08); }
+    100%{ transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .score-tile.bump{ animation: none; }
+  }
+  .score-controls{
+    display:flex;
+    gap: 10px;
+    width: 100%;
+  }
+  .score-btn{
+    flex: 1;
+    aspect-ratio: 1;
+    min-height: 46px;
+    border-radius: 50%;
+    border: none;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 20px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .score-btn.minus{ background: var(--red-soft); color: var(--red); }
+  .score-btn.minus:hover{ background: var(--red); color: var(--tile-text); }
+  .score-btn.plus{ background: var(--green-soft); color: var(--green); }
+  .score-btn.plus:hover{ background: var(--green); color: var(--tile-text); }
+  .score-btn:active{ transform: scale(0.94); }
+
+  .section-label{
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 10px 2px;
+  }
+
+  .ledger-scroll{
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    background: var(--paper-raised);
+    margin-bottom: 20px;
+  }
+  table.ledger{
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+  }
+  table.ledger th, table.ledger td{
+    padding: 10px 12px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  table.ledger thead th{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink);
+    border-bottom: 1.5px solid var(--ink);
+    position: sticky;
+    top: 0;
+    background: var(--paper-raised);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  table.ledger tbody tr{ border-bottom: 1px solid var(--rule); }
+  .cell-delta{
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .cell-delta.pos{ color: var(--green); }
+  .cell-delta.neg{ color: var(--red); }
+  .cell-delta.zero{ color: var(--ink-soft); }
+  table.ledger tfoot tr.total-caption-row td{
+    padding: 8px 12px 0;
+    border-top: 1.5px solid var(--ink);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-align: left;
+  }
+  table.ledger tfoot tr.total-row td{
+    padding-top: 2px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .game-actions{
+    display:flex;
+    margin-bottom: 10px;
+  }
+  .game-actions:last-child{ margin-bottom: 0; }
+
+  /* ---------- End screen ---------- */
+  .standings{
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 26px;
+  }
+  .standing-row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+  }
+  .standing-row.winner{
+    background: var(--amber-soft);
+    border-color: var(--amber);
+  }
+  .standing-left{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .standing-rank{
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink-soft);
+    width: 20px;
+    flex-shrink: 0;
+  }
+  .standing-name{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 17px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .trophy{ font-size: 16px; flex-shrink:0; }
+  .standing-score{
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .winner-banner{
+    text-align:center;
+    margin-bottom: 22px;
+  }
+  .winner-banner .trophy-big{ font-size: 38px; display:block; margin-bottom: 6px; }
+  .winner-banner .winner-name{
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(22px, 6vw, 30px);
+  }
+  .winner-banner .winner-sub{
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  .loading-state{
+    text-align:center;
+    padding: 60px 20px;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div id="loading" class="loading-state">Loading your scorepad…</div>
+
+  <!-- ===================== SETUP SCREEN ===================== -->
+  <section id="setup-screen" class="hidden">
+    <div class="screen-scroll">
+      <header class="top">
+        <div>
+          <h1>New game</h1>
+        </div>
+      </header>
+
+      <div id="team-list"></div>
+      <button id="add-team-btn" class="add-team-btn" type="button">+ Add team</button>
+    </div>
+
+    <div class="screen-footer">
+      <div class="screen-footer-inner">
+        <button id="start-game-btn" class="primary-btn" type="button">Start game</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== GAME SCREEN ===================== -->
+  <section id="game-screen" class="hidden">
+    <div class="screen-scroll">
+      <header class="top">
+        <div>
+          <h1>Skorbord</h1>
+        </div>
+        <div id="round-badge" class="round-badge">Round 1</div>
+      </header>
+
+      <div id="scoreboard" class="scoreboard"></div>
+
+      <div class="ledger-scroll">
+        <table class="ledger">
+          <thead><tr id="ledger-head"></tr></thead>
+          <tbody id="ledger-body"></tbody>
+          <tfoot id="ledger-foot"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="screen-footer">
+      <div class="screen-footer-inner">
+        <div class="game-actions">
+          <button id="next-round-btn" class="primary-btn" type="button">Next round</button>
+        </div>
+        <div class="game-actions">
+          <button id="end-game-btn" class="secondary-btn" type="button">End game</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== END SCREEN ===================== -->
+  <section id="end-screen" class="hidden">
+    <div class="screen-scroll">
+      <header class="top">
+        <div>
+          <h1>Final results</h1>
+        </div>
+        <button id="download-png-btn" class="icon-btn download-btn" type="button" aria-label="Download results as PNG" title="Download results as PNG">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+        </button>
+      </header>
+
+      <div id="winner-banner" class="winner-banner"></div>
+      <div id="standings" class="standings"></div>
+    </div>
+
+    <div class="screen-footer">
+      <div class="screen-footer-inner">
+        <button id="new-game-btn" class="primary-btn" type="button">Start a new game</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const STORAGE_KEY = "skorbord:game";
+  const MAX_TEAMS = 5;
+  const MIN_TEAMS = 2;
+
+  let state = null;
+
+  function defaultState(){
+    return {
+      status: "setup", // setup | playing | ended
+      teams: [
+        { id: makeId(), name: "Us" },
+        { id: makeId(), name: "Them" }
+      ],
+      rounds: [] // { scores: { [teamId]: number } }, last item is the in-progress round while playing
+    };
+  }
+
+  function makeId(){
+    return "t_" + Math.random().toString(36).slice(2, 10);
+  }
+
+  async function saveState(){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    }catch(err){
+      console.error("Could not save game", err);
+    }
+  }
+
+  async function loadState(){
+    try{
+      const result = await window.storage.get(STORAGE_KEY, false);
+      if(result && result.value){
+        const parsed = JSON.parse(result.value);
+        if(parsed && Array.isArray(parsed.teams)) return parsed;
+      }
+    }catch(err){
+      // no saved game yet, that's fine
+    }
+    return defaultState();
+  }
+
+  async function clearState(){
+    try{ await window.storage.delete(STORAGE_KEY, false); }catch(err){ /* ignore */ }
+  }
+
+  // ---------- helpers ----------
+  function teamTotal(teamId){
+    return state.rounds.reduce((sum, r) => sum + (r.scores[teamId] || 0), 0);
+  }
+
+  function el(tag, attrs, children){
+    const node = document.createElement(tag);
+    if(attrs){
+      for(const k in attrs){
+        if(k === "class") node.className = attrs[k];
+        else if(k === "text") node.textContent = attrs[k];
+        else if(k === "html") node.innerHTML = attrs[k];
+        else node.setAttribute(k, attrs[k]);
+      }
+    }
+    (children || []).forEach(c => c && node.appendChild(c));
+    return node;
+  }
+
+  // ---------- render dispatch ----------
+  function render(){
+    document.getElementById("loading").classList.add("hidden");
+    const screens = { setup: "setup-screen", playing: "game-screen", ended: "end-screen" };
+    Object.values(screens).forEach(id => document.getElementById(id).classList.add("hidden"));
+    document.getElementById(screens[state.status]).classList.remove("hidden");
+
+    if(state.status === "setup") renderSetup();
+    else if(state.status === "playing") renderGame();
+    else if(state.status === "ended") renderEnd();
+  }
+
+  function uniqueTeamName(startingAt, excludeTeamId){
+    const taken = new Set(
+      state.teams
+        .filter(t => t.id !== excludeTeamId)
+        .map(t => t.name.trim().toLowerCase())
+    );
+    let n = startingAt;
+    while(taken.has(("Team " + n).toLowerCase())){
+      n++;
+    }
+    return "Team " + n;
+  }
+
+  // ---------- SETUP ----------
+  function renderSetup(){
+    const list = document.getElementById("team-list");
+    list.innerHTML = "";
+    state.teams.forEach((team, idx) => {
+      const swatch = el("span", { class: "swatch", style: `background:${teamColor(idx)}` });
+      const input = el("input", { type: "text", value: team.name, maxlength: "24", "aria-label": "Team name" });
+      input.value = team.name;
+      input.addEventListener("input", () => {
+        const isDup = isDuplicateName(input.value, team.id);
+        setRowError(team.id, isDup);
+        if(!isDup){
+          team.name = input.value;
+          saveState();
+        }
+        refreshStartButton();
+      });
+      input.addEventListener("blur", () => {
+        if(!input.value.trim()){
+          team.name = uniqueTeamName(idx + 1, team.id);
+          input.value = team.name;
+          saveState();
+          setRowError(team.id, false);
+          refreshStartButton();
+        }
+      });
+      const removeBtn = el("button", { class: "icon-btn", type: "button", "aria-label": "Remove team", text: "\u2715" });
+      if(state.teams.length <= MIN_TEAMS){
+        removeBtn.classList.add("hidden");
+      }
+      removeBtn.addEventListener("click", () => {
+        if(state.teams.length <= MIN_TEAMS) return;
+        state.teams.splice(idx, 1);
+        saveState();
+        renderSetup();
+      });
+      const fieldRow = el("div", { class: "team-row" }, [swatch, input, removeBtn]);
+      const fieldError = el("div", { class: "field-error hidden", text: "That name is already used" });
+      const group = el("div", { class: "team-row-group", "data-team-id": team.id }, [fieldRow, fieldError]);
+      list.appendChild(group);
+    });
+
+    const addBtn = document.getElementById("add-team-btn");
+    addBtn.disabled = state.teams.length >= MAX_TEAMS;
+    addBtn.textContent = state.teams.length >= MAX_TEAMS ? "Maximum of 5 teams" : "+ Add team";
+
+    refreshStartButton();
+  }
+
+  // A name is only a duplicate against the *committed* names of other teams, so
+  // when you edit a field to match an existing name, only the field you're
+  // actively editing gets flagged — the other (already valid) team is left alone.
+  function isDuplicateName(name, excludeTeamId){
+    const key = name.trim().toLowerCase();
+    if(!key) return false;
+    return state.teams.some(t => t.id !== excludeTeamId && t.name.trim().toLowerCase() === key);
+  }
+
+  function setRowError(teamId, isError){
+    const group = document.querySelector('.team-row-group[data-team-id="' + teamId + '"]');
+    if(!group) return;
+    group.querySelector("input").classList.toggle("input-error", isError);
+    group.querySelector(".team-row").classList.toggle("has-error", isError);
+    group.querySelector(".field-error").classList.toggle("hidden", !isError);
+  }
+
+  function anyRowHasError(){
+    return !!document.querySelector("#team-list .team-row.has-error");
+  }
+
+  function refreshStartButton(){
+    document.getElementById("start-game-btn").disabled = anyRowHasError();
+  }
+
+  document.getElementById("add-team-btn").addEventListener("click", () => {
+    if(state.teams.length >= MAX_TEAMS) return;
+    state.teams.push({ id: makeId(), name: uniqueTeamName(state.teams.length + 1) });
+    saveState();
+    renderSetup();
+  });
+
+  document.getElementById("start-game-btn").addEventListener("click", () => {
+    if(anyRowHasError()) return;
+    state.teams.forEach((t, idx) => { if(!t.name.trim()) t.name = uniqueTeamName(idx + 1, t.id); });
+    state.status = "playing";
+    state.rounds = [ emptyRound() ];
+    saveState();
+    render();
+  });
+
+  function emptyRound(){
+    const scores = {};
+    state.teams.forEach(t => scores[t.id] = 0);
+    return { scores };
+  }
+
+  function teamColor(idx){
+    const palette = ["#2F7A57", "#B33A3A", "#3A5FB3", "#C9932A", "#7A4FB3"];
+    return palette[idx % palette.length];
+  }
+
+  // ---------- GAME ----------
+  function renderGame(){
+    document.getElementById("round-badge").textContent = "Round " + state.rounds.length;
+
+    const board = document.getElementById("scoreboard");
+    board.innerHTML = "";
+    state.teams.forEach(team => {
+      const total = teamTotal(team.id);
+      const tile = el("div", { class: "score-tile" + (total < 0 ? " negative" : ""), text: String(total) });
+      tile.dataset.teamId = team.id;
+
+      const minus = el("button", { class: "score-btn minus", type: "button", "aria-label": "Decrease " + team.name + " score", text: "\u2212" });
+      minus.addEventListener("click", () => adjustScore(team.id, -1));
+      const plus = el("button", { class: "score-btn plus", type: "button", "aria-label": "Increase " + team.name + " score", text: "+" });
+      plus.addEventListener("click", () => adjustScore(team.id, 1));
+
+      const controls = el("div", { class: "score-controls" }, [minus, plus]);
+      const nameLabel = el("div", { class: "team-name", text: team.name });
+
+      board.appendChild(el("div", { class: "team-card" }, [nameLabel, tile, controls]));
+    });
+
+    renderLedger();
+    updateNextRoundButton();
+  }
+
+  function updateNextRoundButton(){
+    const current = state.rounds[state.rounds.length - 1];
+    const hasChange = Object.values(current.scores).some(v => v !== 0);
+    document.getElementById("next-round-btn").disabled = !hasChange;
+  }
+
+  function adjustScore(teamId, delta){
+    const current = state.rounds[state.rounds.length - 1];
+    current.scores[teamId] = (current.scores[teamId] || 0) + delta;
+    saveState();
+    renderGame();
+    const tile = document.querySelector('.score-tile[data-team-id="' + teamId + '"]');
+    if(tile){
+      tile.classList.remove("bump");
+      // force reflow so the animation can restart
+      void tile.offsetWidth;
+      tile.classList.add("bump");
+    }
+  }
+
+  function renderLedger(){
+    const head = document.getElementById("ledger-head");
+    head.innerHTML = "";
+    state.teams.forEach(t => head.appendChild(el("th", { text: t.name })));
+
+    const body = document.getElementById("ledger-body");
+    body.innerHTML = "";
+
+    let running = {};
+    state.teams.forEach(t => running[t.id] = 0);
+
+    const totalRounds = state.rounds.length;
+    const showTotals = totalRounds > 1;
+
+    state.rounds.forEach((round, i) => {
+      const isCurrent = i === totalRounds - 1;
+      state.teams.forEach(t => { running[t.id] += (round.scores[t.id] || 0); });
+      if(isCurrent && showTotals) return; // don't reveal an in-progress round once history has started
+
+      const row = el("tr", {});
+      state.teams.forEach(t => {
+        const delta = round.scores[t.id] || 0;
+        const sign = delta > 0 ? "pos" : delta < 0 ? "neg" : "zero";
+        const deltaText = delta > 0 ? "+" + delta : String(delta);
+        row.appendChild(el("td", {}, [
+          el("div", { class: "cell-delta " + sign, text: deltaText })
+        ]));
+      });
+      body.appendChild(row);
+    });
+
+    const foot = document.getElementById("ledger-foot");
+    foot.innerHTML = "";
+    if(showTotals){
+      const captionRow = el("tr", { class: "total-caption-row" });
+      captionRow.appendChild(el("td", { colspan: String(state.teams.length), text: "Total" }));
+      foot.appendChild(captionRow);
+
+      const totalRow = el("tr", { class: "total-row" });
+      state.teams.forEach(t => totalRow.appendChild(el("td", { text: String(running[t.id]) })));
+      foot.appendChild(totalRow);
+    }
+  }
+
+  document.getElementById("next-round-btn").addEventListener("click", () => {
+    state.rounds.push(emptyRound());
+    saveState();
+    renderGame();
+  });
+
+  document.getElementById("end-game-btn").addEventListener("click", () => {
+    if(!confirm("End the game and show final results?")) return;
+    state.status = "ended";
+    saveState();
+    render();
+  });
+
+  // ---------- END ----------
+  function getStandings(){
+    const totals = state.teams.map(t => ({ team: t, total: teamTotal(t.id) }));
+    totals.sort((a, b) => b.total - a.total);
+    const topScore = totals[0].total;
+    const winners = totals.filter(x => x.total === topScore);
+    return { totals, topScore, winners };
+  }
+
+  function renderEnd(){
+    const { totals, topScore, winners } = getStandings();
+    const banner = document.getElementById("winner-banner");
+    banner.innerHTML = "";
+    if(winners.length === 1){
+      banner.appendChild(el("span", { class: "trophy-big", text: "\u{1F3C6}" }));
+      banner.appendChild(el("div", { class: "winner-name", text: winners[0].team.name + " wins" }));
+    } else {
+      banner.appendChild(el("span", { class: "trophy-big", text: "\u{1F3C6}" }));
+      banner.appendChild(el("div", { class: "winner-name", text: "It's a tie" }));
+      banner.appendChild(el("div", { class: "winner-sub", text: winners.map(w => w.team.name).join(" & ") + " — " + topScore }));
+    }
+
+    const standings = document.getElementById("standings");
+    standings.innerHTML = "";
+    totals.forEach((entry, idx) => {
+      const isWinner = entry.total === topScore;
+      const row = el("div", { class: "standing-row" + (isWinner ? " winner" : "") }, [
+        el("div", { class: "standing-left" }, [
+          el("div", { class: "standing-rank", text: "#" + (idx + 1) }),
+          el("div", { class: "standing-name", text: entry.team.name }),
+          isWinner ? el("span", { class: "trophy", text: "\u{1F3C6}" }) : null
+        ]),
+        el("div", { class: "standing-score", text: String(entry.total) })
+      ]);
+      standings.appendChild(row);
+    });
+  }
+
+  async function downloadResultsPNG(){
+    const btn = document.getElementById("download-png-btn");
+    btn.disabled = true;
+    try{
+      if(document.fonts && document.fonts.ready){ await document.fonts.ready; }
+
+      const { totals, topScore, winners } = getStandings();
+      const scale = 2; // render at 2x for a crisp PNG
+      const width = 640;
+      const rowHeight = 64;
+      const topPad = 150;
+      const bottomPad = 40;
+      const height = topPad + totals.length * rowHeight + bottomPad;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+
+      const paper = "#E8E5DB";
+      const paperRaised = "#F1EEE4";
+      const rule = "#C6C0AE";
+      const ink = "#1E2A38";
+      const inkSoft = "#5A6675";
+      const amberSoft = "#F3E4BC";
+      const amber = "#C9932A";
+
+      // background
+      ctx.fillStyle = paper;
+      ctx.fillRect(0, 0, width, height);
+
+      // heading
+      ctx.fillStyle = ink;
+      ctx.font = "700 30px 'Space Grotesk', sans-serif";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText("Final results", 32, 52);
+
+      // winner line
+      ctx.font = "600 17px 'Space Grotesk', sans-serif";
+      ctx.fillStyle = inkSoft;
+      const winnerLine = winners.length === 1
+        ? "\u{1F3C6} " + winners[0].team.name + " wins"
+        : "\u{1F3C6} Tied: " + winners.map(w => w.team.name).join(" & ");
+      ctx.fillText(winnerLine, 32, 84);
+
+      // divider
+      ctx.strokeStyle = rule;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(32, topPad - 20);
+      ctx.lineTo(width - 32, topPad - 20);
+      ctx.stroke();
+
+      // rows
+      totals.forEach((entry, idx) => {
+        const isWinner = entry.total === topScore;
+        const y = topPad + idx * rowHeight;
+        const rowW = width - 64;
+
+        ctx.fillStyle = isWinner ? amberSoft : paperRaised;
+        roundRect(ctx, 32, y, rowW, rowHeight - 12, 12);
+        ctx.fill();
+        if(isWinner){
+          ctx.strokeStyle = amber;
+          ctx.lineWidth = 1.5;
+          roundRect(ctx, 32, y, rowW, rowHeight - 12, 12);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = inkSoft;
+        ctx.font = "700 13px 'Space Grotesk', sans-serif";
+        ctx.fillText("#" + (idx + 1), 52, y + (rowHeight - 12) / 2 + 5);
+
+        ctx.fillStyle = ink;
+        ctx.font = "600 19px 'Space Grotesk', sans-serif";
+        const nameX = 92;
+        ctx.fillText(truncateToWidth(ctx, entry.team.name, 360), nameX, y + (rowHeight - 12) / 2 + 7);
+
+        ctx.font = "700 24px 'Space Grotesk', sans-serif";
+        ctx.fillStyle = ink;
+        ctx.textAlign = "right";
+        ctx.fillText(String(entry.total), width - 52, y + (rowHeight - 12) / 2 + 8);
+        ctx.textAlign = "left";
+      });
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      if(!blob) throw new Error("Could not create image");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "skorbord-results.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }catch(err){
+      console.error("Could not export PNG", err);
+      alert("Sorry, the image couldn't be created.");
+    }finally{
+      btn.disabled = false;
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function truncateToWidth(ctx, text, maxWidth){
+    if(ctx.measureText(text).width <= maxWidth) return text;
+    let truncated = text;
+    while(truncated.length > 1 && ctx.measureText(truncated + "…").width > maxWidth){
+      truncated = truncated.slice(0, -1);
+    }
+    return truncated + "…";
+  }
+
+  document.getElementById("download-png-btn").addEventListener("click", downloadResultsPNG);
+
+  document.getElementById("new-game-btn").addEventListener("click", async () => {
+    if(!confirm("Start a new game? This will clear the current results.")) return;
+    const oldNames = state.teams.map(t => t.name);
+    state = defaultState();
+    state.teams = oldNames.slice(0, MAX_TEAMS).map(name => ({ id: makeId(), name }));
+    if(state.teams.length < MIN_TEAMS){
+      while(state.teams.length < MIN_TEAMS){
+        state.teams.push({ id: makeId(), name: state.teams.length === 0 ? "Us" : "Them" });
+      }
+    }
+    await clearState();
+    saveState();
+    render();
+  });
+
+  // ---------- boot ----------
+  (async function init(){
+    state = await loadState();
+    render();
+  })();
+})();
+</script>
+
+</body>
+</html>
