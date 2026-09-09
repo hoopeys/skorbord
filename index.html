@@ -707,19 +707,19 @@
     return "t_" + Math.random().toString(36).slice(2, 10);
   }
 
-  async function saveState(){
+  function saveState(){
     try{
-      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }catch(err){
       console.error("Could not save game", err);
     }
   }
 
-  async function loadState(){
+  function loadState(){
     try{
-      const result = await window.storage.get(STORAGE_KEY, false);
-      if(result && result.value){
-        const parsed = JSON.parse(result.value);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
         if(parsed && Array.isArray(parsed.teams)) return parsed;
       }
     }catch(err){
@@ -728,8 +728,8 @@
     return defaultState();
   }
 
-  async function clearState(){
-    try{ await window.storage.delete(STORAGE_KEY, false); }catch(err){ /* ignore */ }
+  function clearState(){
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(err){ /* ignore */ }
   }
 
   // ---------- helpers ----------
@@ -1162,31 +1162,37 @@
   // The light/dark switch itself is pure CSS (see the :has() rules above and
   // the two radio inputs near the top of <body>). This just remembers whichever
   // one the person picked, across visits.
-  async function initThemePersistence(){
+  function initThemePersistence(){
     const lightRadio = document.getElementById("theme-light");
     const darkRadio = document.getElementById("theme-dark");
     if(!lightRadio || !darkRadio) return;
 
     try{
-      const result = await window.storage.get(THEME_KEY, false);
-      if(result && result.value === "light") lightRadio.checked = true;
-      else if(result && result.value === "dark") darkRadio.checked = true;
+      const saved = localStorage.getItem(THEME_KEY);
+      if(saved === "light") lightRadio.checked = true;
+      else if(saved === "dark") darkRadio.checked = true;
     }catch(err){ /* no saved preference yet */ }
 
     [lightRadio, darkRadio].forEach(radio => {
       radio.addEventListener("change", () => {
         if(!radio.checked) return;
-        window.storage.set(THEME_KEY, radio.id === "theme-light" ? "light" : "dark", false)
-          .catch(err => console.error("Could not save theme preference", err));
+        try{
+          localStorage.setItem(THEME_KEY, radio.id === "theme-light" ? "light" : "dark");
+        }catch(err){
+          console.error("Could not save theme preference", err);
+        }
       });
     });
   }
+
+  // Runs immediately (not inside the async boot below) since localStorage is
+  // synchronous — this avoids any flash of the wrong theme while game state loads.
+  initThemePersistence();
 
   // ---------- boot ----------
   (async function init(){
     state = await loadState();
     render();
-    initThemePersistence();
   })();
 })();
 </script>
