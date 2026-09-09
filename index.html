@@ -120,7 +120,7 @@
     padding-bottom: 96px;
   }
   #game-screen .screen-scroll{
-    padding-bottom: 156px;
+    padding-bottom: 100px;
   }
 
   .screen-footer{
@@ -456,6 +456,7 @@
     text-overflow: ellipsis;
   }
   table.ledger tbody tr{ border-bottom: 1px solid var(--rule); }
+  table.ledger tbody tr.current-row{ background: var(--amber-soft); }
   .cell-delta{
     font-family: var(--font-display);
     font-weight: 700;
@@ -483,11 +484,9 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .game-actions{
-    display:flex;
-    margin-bottom: 10px;
+  .end-game-btn{
+    margin-top: 16px;
   }
-  .game-actions:last-child{ margin-bottom: 0; }
 
   /* ---------- End screen ---------- */
   .standings{
@@ -632,16 +631,13 @@
           <tfoot id="ledger-foot"></tfoot>
         </table>
       </div>
+
+      <button id="end-game-btn" class="secondary-btn end-game-btn" type="button">End game</button>
     </div>
 
     <div class="screen-footer">
       <div class="screen-footer-inner">
-        <div class="game-actions">
-          <button id="next-round-btn" class="primary-btn" type="button">Next round</button>
-        </div>
-        <div class="game-actions">
-          <button id="end-game-btn" class="secondary-btn" type="button">End game</button>
-        </div>
+        <button id="next-round-btn" class="primary-btn" type="button">Next round</button>
       </div>
     </div>
   </section>
@@ -940,9 +936,8 @@
     state.rounds.forEach((round, i) => {
       const isCurrent = i === totalRounds - 1;
       state.teams.forEach(t => { running[t.id] += (round.scores[t.id] || 0); });
-      if(isCurrent && showTotals) return; // don't reveal an in-progress round once history has started
 
-      const row = el("tr", {});
+      const row = el("tr", { class: isCurrent ? "current-row" : "" });
       state.teams.forEach(t => {
         const delta = round.scores[t.id] || 0;
         const sign = delta > 0 ? "pos" : delta < 0 ? "neg" : "zero";
