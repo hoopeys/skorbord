@@ -297,6 +297,70 @@
   }
   .add-team-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
   .add-team-btn:active{ border-color: var(--ink); color: var(--ink); }
+
+  .threshold-field{
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+  }
+  .threshold-field label{
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .threshold-optional{
+    font-family: var(--font-body);
+    font-weight: 400;
+    color: var(--ink-soft);
+  }
+  .threshold-input-row{
+    position: relative;
+  }
+  .threshold-field input{
+    width: 100%;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 17px;
+    padding: 10px 36px 10px 12px;
+    border-radius: var(--radius-sm);
+    outline: none;
+  }
+  .threshold-field input::placeholder{
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .threshold-field input:focus{
+    border-color: var(--ink);
+  }
+  #clear-threshold-btn{
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 13px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 0;
+  }
+  #clear-threshold-btn:active{ color: var(--red); background: var(--red-soft); }
   .primary-btn{
     width: 100%;
     border: none;
@@ -506,8 +570,58 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .threshold-note{
+    text-align: center;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 14px;
+  }
+  .threshold-note.reached{
+    color: #1E2A38;
+    background: var(--amber-soft);
+    border: 1px solid var(--amber);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font-weight: 600;
+  }
+  body:has(#theme-dark:checked) .threshold-note.reached{
+    color: #ECE8DD;
+  }
+  @media (prefers-color-scheme: dark){
+    body:not(:has(#theme-light:checked)) .threshold-note.reached{
+      color: #ECE8DD;
+    }
+  }
+
   .end-game-btn{
     margin-top: 16px;
+  }
+  .end-game-btn.reached{
+    background: var(--green);
+    border-color: var(--green);
+    color: #F3EFE4;
+    font-weight: 700;
+    animation: end-game-glow 2.2s ease-in-out infinite;
+  }
+  @keyframes end-game-glow{
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 45%, transparent); }
+    50% { box-shadow: 0 0 16px 4px color-mix(in srgb, var(--green) 45%, transparent); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .end-game-btn.reached{
+      animation: none;
+      box-shadow: 0 0 14px 2px color-mix(in srgb, var(--green) 35%, transparent);
+    }
+  }
+  .end-game-btn.reached:active{ background: var(--green); }
+  body:has(#theme-dark:checked) .end-game-btn.reached{
+    color: #1E2A38;
+  }
+  @media (prefers-color-scheme: dark){
+    body:not(:has(#theme-light:checked)) .end-game-btn.reached{
+      color: #1E2A38;
+    }
   }
 
   /* ---------- End screen ---------- */
@@ -593,6 +707,8 @@
     .download-btn:hover{ background: var(--ink); color: var(--tile-text); border-color: var(--ink); }
     .add-team-btn:hover{ border-color: var(--ink); color: var(--ink); }
     .secondary-btn:hover{ background: var(--paper); }
+    .end-game-btn.reached:hover{ background: var(--green); opacity: 0.9; }
+    #clear-threshold-btn:hover{ color: var(--red); background: var(--red-soft); }
     .score-btn.minus:hover{ background: var(--red); color: var(--tile-text); }
     .score-btn.plus:hover{ background: var(--green); color: var(--tile-text); }
   }
@@ -628,6 +744,14 @@
 
       <div id="team-list"></div>
       <button id="add-team-btn" class="add-team-btn" type="button">+ Add team</button>
+
+      <div class="threshold-field">
+        <label for="win-threshold-input">Score to win <span class="threshold-optional">(optional)</span></label>
+        <div class="threshold-input-row">
+          <input type="number" id="win-threshold-input" inputmode="numeric" min="1" step="1" placeholder="No limit — play until you end the game">
+          <button id="clear-threshold-btn" class="hidden" type="button" aria-label="Clear score to win" title="Clear">&#10005;</button>
+        </div>
+      </div>
     </div>
 
     <div class="screen-footer">
@@ -665,6 +789,8 @@
           <tfoot id="ledger-foot"></tfoot>
         </table>
       </div>
+
+      <div id="threshold-note" class="threshold-note hidden"></div>
 
       <button id="end-game-btn" class="secondary-btn end-game-btn" type="button">End game</button>
     </div>
@@ -729,7 +855,8 @@
         { id: makeId(), name: "Us" },
         { id: makeId(), name: "Them" }
       ],
-      rounds: [] // { scores: { [teamId]: number } }, last item is the in-progress round while playing
+      rounds: [], // { scores: { [teamId]: number } }, last item is the in-progress round while playing
+      winThreshold: null // optional score-to-win; null means no limit
     };
   }
 
@@ -854,6 +981,10 @@
     addBtn.disabled = state.teams.length >= MAX_TEAMS;
     addBtn.textContent = state.teams.length >= MAX_TEAMS ? "Maximum of 5 teams" : "+ Add team";
 
+    const thresholdInput = document.getElementById("win-threshold-input");
+    thresholdInput.value = state.winThreshold ? String(state.winThreshold) : "";
+    document.getElementById("clear-threshold-btn").classList.toggle("hidden", !state.winThreshold);
+
     refreshStartButton();
   }
 
@@ -887,6 +1018,27 @@
     state.teams.push({ id: makeId(), name: uniqueTeamName(state.teams.length + 1) });
     saveState();
     renderSetup();
+  });
+
+  document.getElementById("win-threshold-input").addEventListener("input", (e) => {
+    const raw = e.target.value.trim();
+    if(raw === ""){
+      state.winThreshold = null;
+    } else {
+      const n = parseInt(raw, 10);
+      state.winThreshold = (Number.isFinite(n) && n > 0) ? n : null;
+    }
+    document.getElementById("clear-threshold-btn").classList.toggle("hidden", !state.winThreshold);
+    saveState();
+  });
+
+  document.getElementById("clear-threshold-btn").addEventListener("click", () => {
+    state.winThreshold = null;
+    const input = document.getElementById("win-threshold-input");
+    input.value = "";
+    document.getElementById("clear-threshold-btn").classList.add("hidden");
+    saveState();
+    input.focus();
   });
 
   document.getElementById("start-game-btn").addEventListener("click", () => {
@@ -930,18 +1082,48 @@
     });
 
     renderLedger();
+    renderThresholdNote();
     updateNextRoundButton();
     updateEndGameButton();
   }
 
+  function thresholdReached(){
+    if(!state.winThreshold) return false;
+    return state.teams.some(t => teamTotal(t.id) >= state.winThreshold);
+  }
+
+  function renderThresholdNote(){
+    const note = document.getElementById("threshold-note");
+    if(!state.winThreshold){
+      note.classList.add("hidden");
+      return;
+    }
+    note.classList.remove("hidden");
+    if(thresholdReached()){
+      note.textContent = "🏆 " + state.winThreshold + " points reached — enter any remaining scores";
+      note.classList.add("reached");
+    } else {
+      note.textContent = "Playing to " + state.winThreshold + " points";
+      note.classList.remove("reached");
+    }
+  }
+
   function updateNextRoundButton(){
+    if(thresholdReached()){
+      document.getElementById("next-round-btn").disabled = true;
+      return;
+    }
     const current = state.rounds[state.rounds.length - 1];
     const hasChange = Object.values(current.scores).some(v => v !== 0);
     document.getElementById("next-round-btn").disabled = !hasChange;
   }
 
   function updateEndGameButton(){
-    document.getElementById("end-game-btn").disabled = state.rounds.length <= 1;
+    const reached = state.winThreshold ? thresholdReached() : false;
+    const enabled = state.winThreshold ? reached : state.rounds.length > 1;
+    const btn = document.getElementById("end-game-btn");
+    btn.disabled = !enabled;
+    btn.classList.toggle("reached", reached);
   }
 
   function adjustScore(teamId, delta){
@@ -1182,8 +1364,10 @@
   document.getElementById("new-game-btn").addEventListener("click", async () => {
     if(!confirm("Start a new game? This will clear the current results.")) return;
     const oldNames = state.teams.map(t => t.name);
+    const oldThreshold = state.winThreshold;
     state = defaultState();
     state.teams = oldNames.slice(0, MAX_TEAMS).map(name => ({ id: makeId(), name }));
+    state.winThreshold = oldThreshold;
     if(state.teams.length < MIN_TEAMS){
       while(state.teams.length < MIN_TEAMS){
         state.teams.push({ id: makeId(), name: state.teams.length === 0 ? "Us" : "Them" });
