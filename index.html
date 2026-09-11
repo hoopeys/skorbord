@@ -197,7 +197,7 @@
     color: var(--ink-soft);
     touch-action: manipulation;
   }
-  .theme-toggle label:hover{ background: var(--rule); }
+  .theme-toggle label:active{ background: var(--rule); }
   body:has(#theme-light:checked) .theme-toggle label[for="theme-light"],
   body:not(:has(#theme-light:checked)):not(:has(#theme-dark:checked)) .theme-toggle label[for="theme-light"]{
     background: var(--ink);
@@ -282,8 +282,8 @@
     display:flex; align-items:center; justify-content:center;
     flex-shrink: 0;
   }
-  .icon-btn:hover{ background: var(--red-soft); color: var(--red); border-color: var(--red); }
   .icon-btn:disabled{ opacity: 0.35; cursor: not-allowed; background: var(--paper); color: var(--ink-soft); border-color: var(--rule); }
+  .icon-btn:active{ background: var(--red-soft); color: var(--red); border-color: var(--red); }
   .download-btn{
     width: 42px;
     height: 42px;
@@ -291,8 +291,8 @@
     background: var(--paper-raised);
     flex-shrink: 0;
   }
-  .download-btn:hover{ background: var(--ink); color: var(--tile-text); border-color: var(--ink); }
   .download-btn:disabled{ opacity: 0.5; cursor: wait; }
+  .download-btn:active{ background: var(--ink); color: var(--tile-text); border-color: var(--ink); }
 
   .add-team-btn{
     width: 100%;
@@ -306,8 +306,8 @@
     color: var(--ink-soft);
     margin-bottom: 26px;
   }
-  .add-team-btn:hover{ border-color: var(--ink); color: var(--ink); }
   .add-team-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
+  .add-team-btn:active{ border-color: var(--ink); color: var(--ink); }
   .primary-btn{
     width: 100%;
     border: none;
@@ -340,12 +340,12 @@
     padding: 13px;
     border-radius: var(--radius-md);
   }
-  .secondary-btn:hover{ background: var(--paper); }
   .secondary-btn:disabled{
     opacity: 0.4;
     cursor: not-allowed;
     background: var(--paper-raised);
   }
+  .secondary-btn:active{ background: var(--paper); }
 
   /* ---------- Game screen ---------- */
   .scoreboard{
@@ -417,9 +417,7 @@
     display:flex; align-items:center; justify-content:center;
   }
   .score-btn.minus{ background: var(--red-soft); color: var(--red); }
-  .score-btn.minus:hover{ background: var(--red); color: var(--tile-text); }
   .score-btn.plus{ background: var(--green-soft); color: var(--green); }
-  .score-btn.plus:hover{ background: var(--green); color: var(--tile-text); }
   .score-btn:active{ transform: scale(0.94); }
 
   .section-label{
@@ -566,6 +564,19 @@
     padding: 60px 20px;
     color: var(--ink-soft);
     font-size: 14px;
+  }
+  /* Hover styles only apply on devices with a real pointer (mouse/trackpad).
+     On touch devices, WebKit applies :hover after a tap and it stays "stuck"
+     since there's no cursor to move away and clear it — :active covers the
+     tap feedback there instead. */
+  @media (hover: hover) and (pointer: fine){
+    .theme-toggle label:hover{ background: var(--rule); }
+    .icon-btn:hover{ background: var(--red-soft); color: var(--red); border-color: var(--red); }
+    .download-btn:hover{ background: var(--ink); color: var(--tile-text); border-color: var(--ink); }
+    .add-team-btn:hover{ border-color: var(--ink); color: var(--ink); }
+    .secondary-btn:hover{ background: var(--paper); }
+    .score-btn.minus:hover{ background: var(--red); color: var(--tile-text); }
+    .score-btn.plus:hover{ background: var(--green); color: var(--tile-text); }
   }
 </style>
 </head>
