@@ -195,6 +195,7 @@
     align-items:center;
     justify-content:center;
     color: var(--ink-soft);
+    touch-action: manipulation;
   }
   .theme-toggle label:hover{ background: var(--rule); }
   body:has(#theme-light:checked) .theme-toggle label[for="theme-light"],
@@ -217,7 +218,7 @@
     }
   }
 
-  button{ font-family: var(--font-body); cursor: pointer; }
+  button{ font-family: var(--font-body); cursor: pointer; touch-action: manipulation; }
 
   .hidden{ display:none !important; }
 
@@ -340,6 +341,11 @@
     border-radius: var(--radius-md);
   }
   .secondary-btn:hover{ background: var(--paper); }
+  .secondary-btn:disabled{
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: var(--paper-raised);
+  }
 
   /* ---------- Game screen ---------- */
   .scoreboard{
@@ -897,12 +903,17 @@
 
     renderLedger();
     updateNextRoundButton();
+    updateEndGameButton();
   }
 
   function updateNextRoundButton(){
     const current = state.rounds[state.rounds.length - 1];
     const hasChange = Object.values(current.scores).some(v => v !== 0);
     document.getElementById("next-round-btn").disabled = !hasChange;
+  }
+
+  function updateEndGameButton(){
+    document.getElementById("end-game-btn").disabled = state.rounds.length <= 1;
   }
 
   function adjustScore(teamId, delta){
