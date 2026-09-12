@@ -26,6 +26,9 @@
     --tile-bg: #1E2A38;
     --tile-bg-negative: #5C2A2A;
     --tile-text: #F3EFE4;
+    --tile-green: #7FE0AE;
+    --tile-red: #FF9B90;
+    --tile-neutral: rgba(243,239,228,0.5);
     --green: #2F7A57;
     --green-soft: #DCEBE2;
     --red: #B33A3A;
@@ -52,6 +55,9 @@
       --tile-bg: #F3EFE4;
       --tile-bg-negative: #F0C9C2;
       --tile-text: #1E2A38;
+      --tile-green: #1F7A4C;
+      --tile-red: #A6362E;
+      --tile-neutral: rgba(30,42,56,0.45);
       --green: #4CAF7D;
       --green-soft: #1E3226;
       --red: #E0685F;
@@ -71,6 +77,9 @@
     --tile-bg: #F3EFE4;
     --tile-bg-negative: #F0C9C2;
     --tile-text: #1E2A38;
+    --tile-green: #1F7A4C;
+    --tile-red: #A6362E;
+    --tile-neutral: rgba(30,42,56,0.45);
     --green: #4CAF7D;
     --green-soft: #1E3226;
     --red: #E0685F;
@@ -332,6 +341,12 @@
     padding: 10px 36px 10px 12px;
     border-radius: var(--radius-sm);
     outline: none;
+    -moz-appearance: textfield;
+  }
+  .threshold-field input::-webkit-outer-spin-button,
+  .threshold-field input::-webkit-inner-spin-button{
+    -webkit-appearance: none;
+    margin: 0;
   }
   .threshold-field input::placeholder{
     font-family: var(--font-body);
@@ -347,12 +362,12 @@
     right: 6px;
     top: 50%;
     transform: translateY(-50%);
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     border: none;
     background: transparent;
     color: var(--ink-soft);
-    font-size: 13px;
+    font-size: 18px;
     line-height: 1;
     display: flex;
     align-items: center;
@@ -430,28 +445,57 @@
     white-space: nowrap;
   }
   .score-tile{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     width: 100%;
+    margin-bottom: 12px;
     background: var(--tile-bg);
     color: var(--tile-text);
     border-radius: var(--radius-md);
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    font-size: clamp(30px, 8vw, 40px);
-    text-align: center;
-    padding: 14px 4px 10px;
-    margin-bottom: 12px;
+    padding: 14px 12px 10px;
     transition: background-color 0.2s ease;
   }
   .score-tile.negative{ background: var(--tile-bg-negative); }
-  .score-tile.bump{ animation: bump 0.22s ease; }
-  @keyframes bump{
+  .score-total{
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(28px, 7.5vw, 38px);
+  }
+  .round-delta{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(12px, 3.2vw, 14px);
+    background: var(--tile-neutral);
+    color: var(--tile-text);
+  }
+  .round-delta.pos{
+    background: color-mix(in srgb, var(--tile-green) 35%, var(--tile-bg) 65%);
+    color: var(--tile-green);
+  }
+  .round-delta.neg{
+    background: color-mix(in srgb, var(--tile-red) 35%, var(--tile-bg) 65%);
+    color: var(--tile-red);
+  }
+  .round-delta.bump{ animation: tile-bump 0.22s ease; }
+  .score-tile.bump{ animation: tile-bump 0.22s ease; }
+  @keyframes tile-bump{
     0%{ transform: scale(1); }
     40%{ transform: scale(1.08); }
     100%{ transform: scale(1); }
   }
   @media (prefers-reduced-motion: reduce){
-    .score-tile.bump{ animation: none; }
+    .score-tile.bump, .round-delta.bump{ animation: none; }
   }
   .score-controls{
     display:flex;
@@ -1065,9 +1109,22 @@
   function renderGame(){
     const board = document.getElementById("scoreboard");
     board.innerHTML = "";
+    const currentRound = state.rounds[state.rounds.length - 1];
     state.teams.forEach(team => {
       const total = teamTotal(team.id);
-      const tile = el("div", { class: "score-tile" + (total < 0 ? " negative" : ""), text: String(total) });
+      const totalSpan = el("span", { class: "score-total", text: String(total) });
+
+      const roundDelta = currentRound.scores[team.id] || 0;
+      const tileChildren = [totalSpan];
+      if(roundDelta !== 0){
+        const deltaSign = roundDelta > 0 ? "pos" : "neg";
+        const deltaText = roundDelta > 0 ? "+" + roundDelta : String(roundDelta);
+        const deltaBadge = el("span", { class: "round-delta " + deltaSign, text: deltaText, "aria-label": "This round: " + deltaText });
+        deltaBadge.dataset.teamId = team.id;
+        tileChildren.push(deltaBadge);
+      }
+
+      const tile = el("div", { class: "score-tile" + (total < 0 ? " negative" : "") }, tileChildren);
       tile.dataset.teamId = team.id;
 
       const minus = el("button", { class: "score-btn minus", type: "button", "aria-label": "Decrease " + team.name + " score", text: "\u2212" });
@@ -1131,13 +1188,16 @@
     current.scores[teamId] = (current.scores[teamId] || 0) + delta;
     saveState();
     renderGame();
-    const tile = document.querySelector('.score-tile[data-team-id="' + teamId + '"]');
-    if(tile){
-      tile.classList.remove("bump");
+    [
+      document.querySelector('.score-tile[data-team-id="' + teamId + '"]'),
+      document.querySelector('.round-delta[data-team-id="' + teamId + '"]')
+    ].forEach(el => {
+      if(!el) return;
+      el.classList.remove("bump");
       // force reflow so the animation can restart
-      void tile.offsetWidth;
-      tile.classList.add("bump");
-    }
+      void el.offsetWidth;
+      el.classList.add("bump");
+    });
   }
 
   function renderLedger(){
