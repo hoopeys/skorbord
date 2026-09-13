@@ -29,6 +29,7 @@
     --tile-green: #7FE0AE;
     --tile-red: #FF9B90;
     --tile-neutral: rgba(243,239,228,0.5);
+    --on-ink: #F3EFE4;
     --green: #2F7A57;
     --green-soft: #DCEBE2;
     --red: #B33A3A;
@@ -52,12 +53,7 @@
       --rule: #333941;
       --ink: #ECE8DD;
       --ink-soft: #9BA3AC;
-      --tile-bg: #F3EFE4;
-      --tile-bg-negative: #F0C9C2;
-      --tile-text: #1E2A38;
-      --tile-green: #1F7A4C;
-      --tile-red: #A6362E;
-      --tile-neutral: rgba(30,42,56,0.45);
+      --on-ink: #1E2A38;
       --green: #4CAF7D;
       --green-soft: #1E3226;
       --red: #E0685F;
@@ -74,12 +70,7 @@
     --rule: #333941;
     --ink: #ECE8DD;
     --ink-soft: #9BA3AC;
-    --tile-bg: #F3EFE4;
-    --tile-bg-negative: #F0C9C2;
-    --tile-text: #1E2A38;
-    --tile-green: #1F7A4C;
-    --tile-red: #A6362E;
-    --tile-neutral: rgba(30,42,56,0.45);
+    --on-ink: #1E2A38;
     --green: #4CAF7D;
     --green-soft: #1E3226;
     --red: #E0685F;
@@ -282,15 +273,24 @@
   }
   .icon-btn:disabled{ opacity: 0.35; cursor: not-allowed; background: var(--paper); color: var(--ink-soft); border-color: var(--rule); }
   .icon-btn:active{ background: var(--red-soft); color: var(--red); border-color: var(--red); }
-  .download-btn{
-    width: 42px;
-    height: 42px;
-    color: var(--ink);
-    background: var(--paper-raised);
-    flex-shrink: 0;
+  .download-results-btn{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink-soft);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px;
+    border-radius: var(--radius-md);
+    margin-top: 18px;
   }
-  .download-btn:disabled{ opacity: 0.5; cursor: wait; }
-  .download-btn:active{ background: var(--ink); color: var(--tile-text); border-color: var(--ink); }
+  .download-results-btn:disabled{ opacity: 0.5; cursor: wait; }
+  .download-results-btn:active{ background: var(--paper-raised); color: var(--ink); }
 
   .add-team-btn{
     width: 100%;
@@ -380,7 +380,7 @@
     width: 100%;
     border: none;
     background: var(--ink);
-    color: var(--tile-text);
+    color: var(--on-ink);
     font-family: var(--font-display);
     font-weight: 700;
     font-size: 17px;
@@ -448,7 +448,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 0;
     width: 100%;
     margin-bottom: 12px;
     background: var(--tile-bg);
@@ -457,6 +457,7 @@
     padding: 14px 12px 10px;
     transition: background-color 0.2s ease;
   }
+  .score-tile.has-delta{ gap: 8px; }
   .score-tile.negative{ background: var(--tile-bg-negative); }
   .score-total{
     font-family: var(--font-display);
@@ -468,16 +469,25 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
+    max-width: 0;
     height: 24px;
-    padding: 0 8px;
+    padding: 0;
     border-radius: 999px;
+    overflow: hidden;
+    white-space: nowrap;
+    opacity: 0;
+    transform: scale(0.5);
     font-family: var(--font-display);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     font-size: clamp(12px, 3.2vw, 14px);
-    background: var(--tile-neutral);
-    color: var(--tile-text);
+    background: transparent;
+  }
+  .round-delta.pos, .round-delta.neg{
+    max-width: 60px;
+    padding: 0 8px;
+    opacity: 1;
+    transform: scale(1);
   }
   .round-delta.pos{
     background: color-mix(in srgb, var(--tile-green) 35%, var(--tile-bg) 65%);
@@ -487,13 +497,34 @@
     background: color-mix(in srgb, var(--tile-red) 35%, var(--tile-bg) 65%);
     color: var(--tile-red);
   }
-  .round-delta.bump{ animation: tile-bump 0.22s ease; }
   .score-tile.bump{ animation: tile-bump 0.22s ease; }
+  .round-delta.bump{ animation: tile-bump 0.22s ease; }
   @keyframes tile-bump{
     0%{ transform: scale(1); }
     40%{ transform: scale(1.08); }
     100%{ transform: scale(1); }
   }
+  .score-tile.gap-in{ animation: gap-in 0.28s ease; }
+  .score-tile.gap-out{ animation: gap-out 0.28s ease; }
+  @keyframes gap-in{ from{ gap: 0; } to{ gap: 8px; } }
+  @keyframes gap-out{ from{ gap: 8px; } to{ gap: 0; } }
+  .round-delta.pop-in{ animation: delta-pop-in 0.28s ease; }
+  .round-delta.pop-out{ animation: delta-pop-out 0.28s ease; }
+  @keyframes delta-pop-in{
+    from{ max-width: 0; padding: 0; opacity: 0; transform: scale(0.5); }
+    to{ max-width: 60px; padding: 0 8px; opacity: 1; transform: scale(1); }
+  }
+  @keyframes delta-pop-out{
+    from{ max-width: 60px; padding: 0 8px; opacity: 1; transform: scale(1); }
+    to{ max-width: 0; padding: 0; opacity: 0; transform: scale(0.5); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .score-tile.gap-in, .score-tile.gap-out,
+    .round-delta.pop-in, .round-delta.pop-out{
+      animation: none;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce){
     .score-tile.bump, .round-delta.bump{ animation: none; }
   }
@@ -748,13 +779,13 @@
   @media (hover: hover) and (pointer: fine){
     .theme-toggle label:hover{ background: var(--rule); }
     .icon-btn:hover{ background: var(--red-soft); color: var(--red); border-color: var(--red); }
-    .download-btn:hover{ background: var(--ink); color: var(--tile-text); border-color: var(--ink); }
+    .download-results-btn:hover{ background: var(--paper-raised); color: var(--ink); }
     .add-team-btn:hover{ border-color: var(--ink); color: var(--ink); }
     .secondary-btn:hover{ background: var(--paper); }
     .end-game-btn.reached:hover{ background: var(--green); opacity: 0.9; }
     #clear-threshold-btn:hover{ color: var(--red); background: var(--red-soft); }
-    .score-btn.minus:hover{ background: var(--red); color: var(--tile-text); }
-    .score-btn.plus:hover{ background: var(--green); color: var(--tile-text); }
+    .score-btn.minus:hover{ background: var(--red); color: var(--on-ink); }
+    .score-btn.plus:hover{ background: var(--green); color: var(--on-ink); }
   }
 </style>
 </head>
@@ -862,14 +893,16 @@
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>
             </label>
           </div>
-          <button id="download-png-btn" class="icon-btn download-btn" type="button" aria-label="Download results as PNG" title="Download results as PNG">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
-          </button>
         </div>
       </header>
 
       <div id="winner-banner" class="winner-banner"></div>
       <div id="standings" class="standings"></div>
+
+      <button id="download-png-btn" class="download-results-btn" type="button">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span>Save results for bragging rights</span>
+      </button>
     </div>
 
     <div class="screen-footer">
@@ -891,6 +924,7 @@
   const MIN_TEAMS = 2;
 
   let state = null;
+  let deltaBadgeState = {}; // ephemeral, per-team: { visible, exiting, sign, text } for the round-delta pill's animation lifecycle
 
   function defaultState(){
     return {
@@ -1090,6 +1124,7 @@
     state.teams.forEach((t, idx) => { if(!t.name.trim()) t.name = uniqueTeamName(idx + 1, t.id); });
     state.status = "playing";
     state.rounds = [ emptyRound() ];
+    deltaBadgeState = {};
     saveState();
     render();
   });
@@ -1115,16 +1150,51 @@
       const totalSpan = el("span", { class: "score-total", text: String(total) });
 
       const roundDelta = currentRound.scores[team.id] || 0;
+      const dataVisible = roundDelta !== 0;
+      const prev = deltaBadgeState[team.id] || { visible: false, exiting: false };
+
+      let showBadge = false, badgeSign = null, badgeText = null, isEntering = false, isLeaving = false;
+
+      if(dataVisible){
+        badgeSign = roundDelta > 0 ? "pos" : "neg";
+        badgeText = roundDelta > 0 ? "+" + roundDelta : String(roundDelta);
+        isEntering = !prev.visible;
+        showBadge = true;
+        deltaBadgeState[team.id] = { visible: true, exiting: false, sign: badgeSign, text: badgeText };
+      } else if(prev.visible && !prev.exiting){
+        // Just dropped to zero this render — replay the old badge one more frame, fading it out,
+        // then finalize its removal once the animation has had time to finish.
+        badgeSign = prev.sign;
+        badgeText = prev.text;
+        isLeaving = true;
+        showBadge = true;
+        deltaBadgeState[team.id] = { visible: false, exiting: true, sign: prev.sign, text: prev.text };
+        const teamId = team.id;
+        window.setTimeout(() => {
+          // Only finalize if nothing re-triggered the badge in the meantime.
+          if(deltaBadgeState[teamId] && deltaBadgeState[teamId].exiting){
+            deltaBadgeState[teamId] = { visible: false, exiting: false };
+            renderGame();
+          }
+        }, 280);
+      } else {
+        deltaBadgeState[team.id] = { visible: false, exiting: false };
+      }
+
       const tileChildren = [totalSpan];
-      if(roundDelta !== 0){
-        const deltaSign = roundDelta > 0 ? "pos" : "neg";
-        const deltaText = roundDelta > 0 ? "+" + roundDelta : String(roundDelta);
-        const deltaBadge = el("span", { class: "round-delta " + deltaSign, text: deltaText, "aria-label": "This round: " + deltaText });
+      if(showBadge){
+        const deltaBadge = el("span", {
+          class: "round-delta " + badgeSign + (isEntering ? " pop-in" : "") + (isLeaving ? " pop-out" : ""),
+          text: badgeText,
+          "aria-label": "This round: " + badgeText
+        });
         deltaBadge.dataset.teamId = team.id;
         tileChildren.push(deltaBadge);
       }
 
-      const tile = el("div", { class: "score-tile" + (total < 0 ? " negative" : "") }, tileChildren);
+      const tileClasses = "score-tile" + (total < 0 ? " negative" : "") + (showBadge ? " has-delta" : "")
+        + (isEntering ? " gap-in" : "") + (isLeaving ? " gap-out" : "");
+      const tile = el("div", { class: tileClasses }, tileChildren);
       tile.dataset.teamId = team.id;
 
       const minus = el("button", { class: "score-btn minus", type: "button", "aria-label": "Decrease " + team.name + " score", text: "\u2212" });
@@ -1185,19 +1255,29 @@
 
   function adjustScore(teamId, delta){
     const current = state.rounds[state.rounds.length - 1];
+    const wasZero = (current.scores[teamId] || 0) === 0;
     current.scores[teamId] = (current.scores[teamId] || 0) + delta;
+    const isNowZero = current.scores[teamId] === 0;
+    const justAppeared = wasZero && !isNowZero;
+    const justDisappeared = !wasZero && isNowZero;
     saveState();
     renderGame();
-    [
-      document.querySelector('.score-tile[data-team-id="' + teamId + '"]'),
-      document.querySelector('.round-delta[data-team-id="' + teamId + '"]')
-    ].forEach(el => {
-      if(!el) return;
-      el.classList.remove("bump");
-      // force reflow so the animation can restart
-      void el.offsetWidth;
-      el.classList.add("bump");
-    });
+
+    const tile = document.querySelector('.score-tile[data-team-id="' + teamId + '"]');
+    if(tile){
+      tile.classList.remove("bump");
+      void tile.offsetWidth; // force reflow so the animation can restart
+      tile.classList.add("bump");
+    }
+
+    if(!justAppeared && !justDisappeared){
+      const badge = document.querySelector('.round-delta[data-team-id="' + teamId + '"]');
+      if(badge){
+        badge.classList.remove("bump");
+        void badge.offsetWidth;
+        badge.classList.add("bump");
+      }
+    }
   }
 
   function renderLedger(){
@@ -1434,6 +1514,7 @@
       }
     }
     await clearState();
+    deltaBadgeState = {};
     saveState();
     render();
   });
