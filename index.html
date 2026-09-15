@@ -307,11 +307,66 @@
   .add-team-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
   .add-team-btn:active{ border-color: var(--ink); color: var(--ink); }
 
-  .threshold-field{
-    background: var(--paper-raised);
+  .game-options{
     border: 1px solid var(--rule);
     border-radius: var(--radius-md);
-    padding: 12px 16px;
+    background: var(--paper-raised);
+    margin-bottom: 20px;
+  }
+  .game-options summary{
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--ink);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .game-options summary::-webkit-details-marker{ display: none; }
+  .game-options summary::marker{ content: ""; }
+  .game-options-left{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .game-options-dots{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .options-dot{
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1.5px solid var(--rule);
+    background: transparent;
+  }
+  .options-dot.filled{
+    background: var(--ink-soft);
+    border-color: var(--ink-soft);
+  }
+  .game-options .chevron{
+    color: var(--ink-soft);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+  .game-options[open] .chevron{
+    transform: rotate(180deg);
+  }
+  .game-options-body{
+    padding: 4px 16px 16px;
+  }
+  .game-options-body .threshold-field:last-child{
+    margin-bottom: 0;
+  }
+
+  .threshold-field{
     margin-bottom: 20px;
   }
   .threshold-field label{
@@ -357,7 +412,7 @@
   .threshold-field input:focus{
     border-color: var(--ink);
   }
-  #clear-threshold-btn{
+  .clear-input-btn{
     position: absolute;
     right: 6px;
     top: 50%;
@@ -375,7 +430,7 @@
     border-radius: 50%;
     padding: 0;
   }
-  #clear-threshold-btn:active{ color: var(--red); background: var(--red-soft); }
+  .clear-input-btn:active{ color: var(--red); background: var(--red-soft); }
   .primary-btn{
     width: 100%;
     border: none;
@@ -547,6 +602,7 @@
   .score-btn.minus{ background: var(--red-soft); color: var(--red); }
   .score-btn.plus{ background: var(--green-soft); color: var(--green); }
   .score-btn:active{ transform: scale(0.94); }
+  .score-btn:disabled{ opacity: 0.35; cursor: not-allowed; transform: none; pointer-events: none; }
 
   .section-label{
     font-family: var(--font-body);
@@ -669,8 +725,42 @@
     }
   }
 
+  .points-per-round-note{
+    text-align: center;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+
   .end-game-btn{
+    position: relative;
     margin-top: 16px;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .end-game-btn .hold-fill{
+    border-radius: inherit;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.22);
+    transform: scaleX(0);
+    transform-origin: left center;
+    pointer-events: none;
+  }
+  .end-game-btn .hold-fill.animating{
+    transition: transform 3s linear;
+    transform: scaleX(1);
+  }
+  .end-game-btn .btn-label{
+    position: relative;
+    z-index: 1;
+  }
+  .end-game-btn.visually-disabled{
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: var(--paper-raised);
   }
   .end-game-btn.reached{
     background: var(--green);
@@ -783,7 +873,7 @@
     .add-team-btn:hover{ border-color: var(--ink); color: var(--ink); }
     .secondary-btn:hover{ background: var(--paper); }
     .end-game-btn.reached:hover{ background: var(--green); opacity: 0.9; }
-    #clear-threshold-btn:hover{ color: var(--red); background: var(--red-soft); }
+    .clear-input-btn:hover{ color: var(--red); background: var(--red-soft); }
     .score-btn.minus:hover{ background: var(--red); color: var(--on-ink); }
     .score-btn.plus:hover{ background: var(--green); color: var(--on-ink); }
   }
@@ -820,13 +910,32 @@
       <div id="team-list"></div>
       <button id="add-team-btn" class="add-team-btn" type="button">+ Add team</button>
 
-      <div class="threshold-field">
-        <label for="win-threshold-input">Score to win <span class="threshold-optional">(optional)</span></label>
-        <div class="threshold-input-row">
-          <input type="number" id="win-threshold-input" inputmode="numeric" min="1" step="1" placeholder="No limit — play until you end the game">
-          <button id="clear-threshold-btn" class="hidden" type="button" aria-label="Clear score to win" title="Clear">&#10005;</button>
+      <details class="game-options" id="game-options">
+        <summary>
+          <span class="game-options-left">
+            <span class="game-options-title">Game options</span>
+            <span id="game-options-dots" class="game-options-dots"></span>
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </summary>
+        <div class="game-options-body">
+          <div class="threshold-field">
+            <label for="win-threshold-input">Score to win <span class="threshold-optional">(optional)</span></label>
+            <div class="threshold-input-row">
+              <input type="number" id="win-threshold-input" inputmode="numeric" min="1" step="1" placeholder="No limit — play until you end the game">
+              <button id="clear-threshold-btn" class="clear-input-btn hidden" type="button" aria-label="Clear score to win" title="Clear">&#10005;</button>
+            </div>
+          </div>
+
+          <div class="threshold-field">
+            <label for="points-per-round-input">Points per round <span class="threshold-optional">(optional)</span></label>
+            <div class="threshold-input-row">
+              <input type="number" id="points-per-round-input" inputmode="numeric" min="1" step="1" placeholder="No limit — advance rounds anytime">
+              <button id="clear-points-per-round-btn" class="clear-input-btn hidden" type="button" aria-label="Clear points per round" title="Clear">&#10005;</button>
+            </div>
+          </div>
         </div>
-      </div>
+      </details>
     </div>
 
     <div class="screen-footer">
@@ -857,6 +966,8 @@
 
       <div id="scoreboard" class="scoreboard"></div>
 
+      <div id="points-per-round-note" class="points-per-round-note hidden"></div>
+
       <div class="ledger-scroll">
         <table class="ledger">
           <thead><tr id="ledger-head"></tr></thead>
@@ -867,7 +978,10 @@
 
       <div id="threshold-note" class="threshold-note hidden"></div>
 
-      <button id="end-game-btn" class="secondary-btn end-game-btn" type="button">End game</button>
+      <button id="end-game-btn" class="secondary-btn end-game-btn" type="button">
+        <span class="hold-fill"></span>
+        <span class="btn-label">End game</span>
+      </button>
     </div>
 
     <div class="screen-footer">
@@ -934,7 +1048,8 @@
         { id: makeId(), name: "Them" }
       ],
       rounds: [], // { scores: { [teamId]: number } }, last item is the in-progress round while playing
-      winThreshold: null // optional score-to-win; null means no limit
+      winThreshold: null, // optional score-to-win; null means no limit
+      pointsPerRound: null // optional points-per-round total; null means no limit
     };
   }
 
@@ -1063,7 +1178,22 @@
     thresholdInput.value = state.winThreshold ? String(state.winThreshold) : "";
     document.getElementById("clear-threshold-btn").classList.toggle("hidden", !state.winThreshold);
 
+    const pprInput = document.getElementById("points-per-round-input");
+    pprInput.value = state.pointsPerRound ? String(state.pointsPerRound) : "";
+    document.getElementById("clear-points-per-round-btn").classList.toggle("hidden", !state.pointsPerRound);
+
+    updateGameOptionsBadge();
     refreshStartButton();
+  }
+
+  function updateGameOptionsBadge(){
+    // One entry per optional game setting — add another boolean here if a new one is introduced.
+    const optionsSet = [!!state.winThreshold, !!state.pointsPerRound];
+    const dotsContainer = document.getElementById("game-options-dots");
+    dotsContainer.innerHTML = "";
+    optionsSet.forEach(isSet => {
+      dotsContainer.appendChild(el("span", { class: "options-dot" + (isSet ? " filled" : "") }));
+    });
   }
 
   // A name is only a duplicate against the *committed* names of other teams, so
@@ -1107,6 +1237,7 @@
       state.winThreshold = (Number.isFinite(n) && n > 0) ? n : null;
     }
     document.getElementById("clear-threshold-btn").classList.toggle("hidden", !state.winThreshold);
+    updateGameOptionsBadge();
     saveState();
   });
 
@@ -1115,6 +1246,30 @@
     const input = document.getElementById("win-threshold-input");
     input.value = "";
     document.getElementById("clear-threshold-btn").classList.add("hidden");
+    updateGameOptionsBadge();
+    saveState();
+    input.focus();
+  });
+
+  document.getElementById("points-per-round-input").addEventListener("input", (e) => {
+    const raw = e.target.value.trim();
+    if(raw === ""){
+      state.pointsPerRound = null;
+    } else {
+      const n = parseInt(raw, 10);
+      state.pointsPerRound = (Number.isFinite(n) && n > 0) ? n : null;
+    }
+    document.getElementById("clear-points-per-round-btn").classList.toggle("hidden", !state.pointsPerRound);
+    updateGameOptionsBadge();
+    saveState();
+  });
+
+  document.getElementById("clear-points-per-round-btn").addEventListener("click", () => {
+    state.pointsPerRound = null;
+    const input = document.getElementById("points-per-round-input");
+    input.value = "";
+    document.getElementById("clear-points-per-round-btn").classList.add("hidden");
+    updateGameOptionsBadge();
     saveState();
     input.focus();
   });
@@ -1198,8 +1353,10 @@
       tile.dataset.teamId = team.id;
 
       const minus = el("button", { class: "score-btn minus", type: "button", "aria-label": "Decrease " + team.name + " score", text: "\u2212" });
+      minus.disabled = wouldExceedPointsPerRound(team.id, -1);
       minus.addEventListener("click", () => adjustScore(team.id, -1));
       const plus = el("button", { class: "score-btn plus", type: "button", "aria-label": "Increase " + team.name + " score", text: "+" });
+      plus.disabled = wouldExceedPointsPerRound(team.id, 1);
       plus.addEventListener("click", () => adjustScore(team.id, 1));
 
       const controls = el("div", { class: "score-controls" }, [minus, plus]);
@@ -1210,6 +1367,7 @@
 
     renderLedger();
     renderThresholdNote();
+    renderPointsPerRoundNote();
     updateNextRoundButton();
     updateEndGameButton();
   }
@@ -1217,6 +1375,34 @@
   function thresholdReached(){
     if(!state.winThreshold) return false;
     return state.teams.some(t => teamTotal(t.id) >= state.winThreshold);
+  }
+
+  function currentRoundPositivePoints(){
+    const current = state.rounds[state.rounds.length - 1];
+    return state.teams.reduce((sum, t) => sum + Math.max(current.scores[t.id] || 0, 0), 0);
+  }
+
+  function currentRoundHasNegative(){
+    const current = state.rounds[state.rounds.length - 1];
+    return state.teams.some(t => (current.scores[t.id] || 0) < 0);
+  }
+
+  // Would incrementing this team by +1 push the round's total positive points over the cap?
+  // Decreases (and increments that stay at/below zero) never count against the cap.
+  // Would this change push the team's OWN round score outside ±pointsPerRound?
+  // The cap applies per team individually, not to the combined total across teams.
+  function wouldExceedPointsPerRound(teamId, delta){
+    if(!state.pointsPerRound) return false;
+    const current = state.rounds[state.rounds.length - 1];
+    const newVal = (current.scores[teamId] || 0) + delta;
+    return newVal > state.pointsPerRound || newVal < -state.pointsPerRound;
+  }
+
+  function pointsPerRoundReached(){
+    if(!state.pointsPerRound) return false;
+    // A team going negative (e.g. a failed bid in Pitch) settles the round's
+    // points on its own, even if the positive total never reaches the target.
+    return currentRoundPositivePoints() >= state.pointsPerRound || currentRoundHasNegative();
   }
 
   function renderThresholdNote(){
@@ -1235,25 +1421,57 @@
     }
   }
 
+  function renderPointsPerRoundNote(){
+    const note = document.getElementById("points-per-round-note");
+    if(!state.pointsPerRound){
+      note.classList.add("hidden");
+      return;
+    }
+    note.classList.remove("hidden");
+    note.classList.remove("reached");
+    note.textContent = state.pointsPerRound + " points per round";
+  }
+
   function updateNextRoundButton(){
     if(thresholdReached()){
       document.getElementById("next-round-btn").disabled = true;
       return;
     }
+    let enabled;
+    if(state.pointsPerRound){
+      enabled = pointsPerRoundReached();
+    } else {
+      const current = state.rounds[state.rounds.length - 1];
+      enabled = Object.values(current.scores).some(v => v !== 0);
+    }
+    document.getElementById("next-round-btn").disabled = !enabled;
+  }
+
+  function endGameNormallyEnabled(){
+    const reached = state.winThreshold ? thresholdReached() : false;
+    return state.winThreshold ? reached : state.rounds.length > 1;
+  }
+
+  function canForceEndGame(){
+    if(state.status !== "playing") return false;
     const current = state.rounds[state.rounds.length - 1];
-    const hasChange = Object.values(current.scores).some(v => v !== 0);
-    document.getElementById("next-round-btn").disabled = !hasChange;
+    return state.teams.every(t => (current.scores[t.id] || 0) === 0);
   }
 
   function updateEndGameButton(){
     const reached = state.winThreshold ? thresholdReached() : false;
-    const enabled = state.winThreshold ? reached : state.rounds.length > 1;
+    const enabled = endGameNormallyEnabled();
     const btn = document.getElementById("end-game-btn");
-    btn.disabled = !enabled;
+    // Never natively disabled — that would also block the press-and-hold
+    // force-end gesture, which should still work even when the normal
+    // click path isn't available yet.
+    btn.disabled = false;
+    btn.classList.toggle("visually-disabled", !enabled);
     btn.classList.toggle("reached", reached);
   }
 
   function adjustScore(teamId, delta){
+    if(wouldExceedPointsPerRound(teamId, delta)) return;
     const current = state.rounds[state.rounds.length - 1];
     const wasZero = (current.scores[teamId] || 0) === 0;
     current.scores[teamId] = (current.scores[teamId] || 0) + delta;
@@ -1332,10 +1550,60 @@
   });
 
   document.getElementById("end-game-btn").addEventListener("click", () => {
+    if(holdJustFired){ holdJustFired = false; return; } // avoid double-triggering after a completed hold
+    if(!endGameNormallyEnabled()) return;
     if(!confirm("End the game and show final results?")) return;
     state.status = "ended";
     saveState();
     render();
+  });
+
+  // ---------- press-and-hold to force-end ----------
+  // Only available when the in-progress round has no points entered yet,
+  // so it can't be used to bail out mid-scoring and lose live entries.
+  const HOLD_DURATION_MS = 3000;
+  let holdTimeoutId = null;
+  let holdJustFired = false;
+
+  function endHoldVisual(){
+    const fill = document.querySelector("#end-game-btn .hold-fill");
+    if(fill) fill.classList.remove("animating");
+  }
+
+  function cancelHold(){
+    if(holdTimeoutId){ clearTimeout(holdTimeoutId); holdTimeoutId = null; }
+    endHoldVisual();
+  }
+
+  function startHold(){
+    if(!canForceEndGame()) return;
+    cancelHold();
+    const fill = document.querySelector("#end-game-btn .hold-fill");
+    if(fill){
+      fill.classList.remove("animating");
+      void fill.offsetWidth; // force reflow so the fill transition restarts from empty
+      fill.classList.add("animating");
+    }
+    holdTimeoutId = setTimeout(() => {
+      holdTimeoutId = null;
+      holdJustFired = true;
+      endHoldVisual();
+      state.status = "ended";
+      saveState();
+      render();
+    }, HOLD_DURATION_MS);
+  }
+
+  const endGameBtnEl = document.getElementById("end-game-btn");
+  endGameBtnEl.addEventListener("pointerdown", (e) => {
+    if(e.button !== 0 && e.pointerType === "mouse") return; // primary mouse button only
+    startHold();
+  });
+  endGameBtnEl.addEventListener("pointerup", cancelHold);
+  endGameBtnEl.addEventListener("pointerleave", cancelHold);
+  endGameBtnEl.addEventListener("pointercancel", cancelHold);
+  endGameBtnEl.addEventListener("contextmenu", (e) => {
+    if(canForceEndGame()) e.preventDefault(); // avoid iOS's long-press callout interrupting the hold
   });
 
   // ---------- END ----------
@@ -1505,9 +1773,11 @@
     if(!confirm("Start a new game? This will clear the current results.")) return;
     const oldNames = state.teams.map(t => t.name);
     const oldThreshold = state.winThreshold;
+    const oldPointsPerRound = state.pointsPerRound;
     state = defaultState();
     state.teams = oldNames.slice(0, MAX_TEAMS).map(name => ({ id: makeId(), name }));
     state.winThreshold = oldThreshold;
+    state.pointsPerRound = oldPointsPerRound;
     if(state.teams.length < MIN_TEAMS){
       while(state.teams.length < MIN_TEAMS){
         state.teams.push({ id: makeId(), name: state.teams.length === 0 ? "Us" : "Them" });
