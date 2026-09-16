@@ -133,6 +133,15 @@
     padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -8px 20px -12px rgba(30,42,56,0.18);
     z-index: 30;
+    transform: translateY(0);
+    transition: transform 0.25s ease;
+  }
+  .screen-footer.footer-hidden{
+    transform: translateY(100%);
+    box-shadow: none;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .screen-footer{ transition: none; }
   }
   .screen-footer-inner{
     max-width: 948px;
@@ -411,6 +420,16 @@
   }
   .threshold-field input:focus{
     border-color: var(--ink);
+  }
+  .threshold-field input.input-error{
+    color: var(--red);
+    border-color: var(--red);
+  }
+  .threshold-field input.input-error:focus{
+    border-color: var(--red);
+  }
+  .threshold-field .field-error{
+    margin-left: 2px;
   }
   .clear-input-btn{
     position: absolute;
@@ -856,6 +875,30 @@
     margin-top: 2px;
   }
 
+  .confetti-layer{
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .confetti-piece{
+    position: absolute;
+    top: -16px;
+    left: var(--left);
+    width: var(--size);
+    height: calc(var(--size) * 1.8);
+    background: var(--piece-color);
+    opacity: 0.95;
+    border-radius: var(--piece-radius, 2px);
+    animation: confetti-fall var(--duration) var(--delay) ease-in forwards;
+  }
+  @keyframes confetti-fall{
+    0%{ transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    85%{ opacity: 1; }
+    100%{ transform: translate(var(--drift), 105vh) rotate(var(--spin)); opacity: 0; }
+  }
+
   .loading-state{
     text-align:center;
     padding: 60px 20px;
@@ -925,14 +968,16 @@
               <input type="number" id="win-threshold-input" inputmode="numeric" min="1" step="1" placeholder="No limit — play until you end the game">
               <button id="clear-threshold-btn" class="clear-input-btn hidden" type="button" aria-label="Clear score to win" title="Clear">&#10005;</button>
             </div>
+            <div id="win-threshold-error" class="field-error hidden">Enter a whole number greater than 0</div>
           </div>
 
           <div class="threshold-field">
-            <label for="points-per-round-input">Points per round <span class="threshold-optional">(optional)</span></label>
+            <label for="points-per-round-input">Round score limit <span class="threshold-optional">(optional)</span></label>
             <div class="threshold-input-row">
-              <input type="number" id="points-per-round-input" inputmode="numeric" min="1" step="1" placeholder="No limit — advance rounds anytime">
-              <button id="clear-points-per-round-btn" class="clear-input-btn hidden" type="button" aria-label="Clear points per round" title="Clear">&#10005;</button>
+              <input type="number" id="points-per-round-input" inputmode="numeric" min="1" step="1" placeholder="No limit — any score is allowed">
+              <button id="clear-points-per-round-btn" class="clear-input-btn hidden" type="button" aria-label="Clear round score limit" title="Clear">&#10005;</button>
             </div>
+            <div id="points-per-round-error" class="field-error hidden">Enter a whole number greater than 0</div>
           </div>
         </div>
       </details>
@@ -984,7 +1029,7 @@
       </button>
     </div>
 
-    <div class="screen-footer">
+    <div class="screen-footer" id="game-screen-footer">
       <div class="screen-footer-inner">
         <button id="next-round-btn" class="primary-btn" type="button">Next round</button>
       </div>
@@ -993,6 +1038,7 @@
 
   <!-- ===================== END SCREEN ===================== -->
   <section id="end-screen" class="hidden">
+    <div id="confetti-layer" class="confetti-layer" aria-hidden="true"></div>
     <div class="screen-scroll">
       <header class="top">
         <div>
@@ -1049,7 +1095,7 @@
       ],
       rounds: [], // { scores: { [teamId]: number } }, last item is the in-progress round while playing
       winThreshold: null, // optional score-to-win; null means no limit
-      pointsPerRound: null // optional points-per-round total; null means no limit
+      pointsPerRound: null // optional per-team round score limit (±); null means no limit
     };
   }
 
@@ -1177,10 +1223,12 @@
     const thresholdInput = document.getElementById("win-threshold-input");
     thresholdInput.value = state.winThreshold ? String(state.winThreshold) : "";
     document.getElementById("clear-threshold-btn").classList.toggle("hidden", !state.winThreshold);
+    setFieldValidity("win-threshold-input", "win-threshold-error", true);
 
     const pprInput = document.getElementById("points-per-round-input");
     pprInput.value = state.pointsPerRound ? String(state.pointsPerRound) : "";
     document.getElementById("clear-points-per-round-btn").classList.toggle("hidden", !state.pointsPerRound);
+    setFieldValidity("points-per-round-input", "points-per-round-error", true);
 
     updateGameOptionsBadge();
     refreshStartButton();
@@ -1214,11 +1262,27 @@
   }
 
   function anyRowHasError(){
-    return !!document.querySelector("#team-list .team-row.has-error");
+    return !!document.querySelector("#team-list .team-row.has-error")
+      || document.getElementById("win-threshold-input").classList.contains("input-error")
+      || document.getElementById("points-per-round-input").classList.contains("input-error");
   }
 
   function refreshStartButton(){
     document.getElementById("start-game-btn").disabled = anyRowHasError();
+  }
+
+  // Strict whole-number check: digits only, no sign, no decimal point, must be > 0.
+  // (A native <input type="number"> still lets people type "-3", "3.5", etc.,
+  // so this can't rely on the browser's own min/step validation.)
+  function parsePositiveInteger(raw){
+    if(!/^\d+$/.test(raw)) return null;
+    const n = parseInt(raw, 10);
+    return n > 0 ? n : null;
+  }
+
+  function setFieldValidity(inputId, errorId, isValid){
+    document.getElementById(inputId).classList.toggle("input-error", !isValid);
+    document.getElementById(errorId).classList.toggle("hidden", isValid);
   }
 
   document.getElementById("add-team-btn").addEventListener("click", () => {
@@ -1232,12 +1296,15 @@
     const raw = e.target.value.trim();
     if(raw === ""){
       state.winThreshold = null;
+      setFieldValidity("win-threshold-input", "win-threshold-error", true);
     } else {
-      const n = parseInt(raw, 10);
-      state.winThreshold = (Number.isFinite(n) && n > 0) ? n : null;
+      const parsed = parsePositiveInteger(raw);
+      setFieldValidity("win-threshold-input", "win-threshold-error", parsed !== null);
+      if(parsed !== null) state.winThreshold = parsed; // leave state untouched while the field reads as invalid
     }
-    document.getElementById("clear-threshold-btn").classList.toggle("hidden", !state.winThreshold);
+    document.getElementById("clear-threshold-btn").classList.toggle("hidden", raw === "");
     updateGameOptionsBadge();
+    refreshStartButton();
     saveState();
   });
 
@@ -1246,7 +1313,9 @@
     const input = document.getElementById("win-threshold-input");
     input.value = "";
     document.getElementById("clear-threshold-btn").classList.add("hidden");
+    setFieldValidity("win-threshold-input", "win-threshold-error", true);
     updateGameOptionsBadge();
+    refreshStartButton();
     saveState();
     input.focus();
   });
@@ -1255,12 +1324,15 @@
     const raw = e.target.value.trim();
     if(raw === ""){
       state.pointsPerRound = null;
+      setFieldValidity("points-per-round-input", "points-per-round-error", true);
     } else {
-      const n = parseInt(raw, 10);
-      state.pointsPerRound = (Number.isFinite(n) && n > 0) ? n : null;
+      const parsed = parsePositiveInteger(raw);
+      setFieldValidity("points-per-round-input", "points-per-round-error", parsed !== null);
+      if(parsed !== null) state.pointsPerRound = parsed;
     }
-    document.getElementById("clear-points-per-round-btn").classList.toggle("hidden", !state.pointsPerRound);
+    document.getElementById("clear-points-per-round-btn").classList.toggle("hidden", raw === "");
     updateGameOptionsBadge();
+    refreshStartButton();
     saveState();
   });
 
@@ -1269,7 +1341,9 @@
     const input = document.getElementById("points-per-round-input");
     input.value = "";
     document.getElementById("clear-points-per-round-btn").classList.add("hidden");
+    setFieldValidity("points-per-round-input", "points-per-round-error", true);
     updateGameOptionsBadge();
+    refreshStartButton();
     saveState();
     input.focus();
   });
@@ -1429,22 +1503,24 @@
     }
     note.classList.remove("hidden");
     note.classList.remove("reached");
-    note.textContent = state.pointsPerRound + " points per round";
+    note.textContent = "Round score limit: " + state.pointsPerRound;
   }
 
   function updateNextRoundButton(){
-    if(thresholdReached()){
-      document.getElementById("next-round-btn").disabled = true;
-      return;
-    }
     let enabled;
-    if(state.pointsPerRound){
+    if(thresholdReached()){
+      enabled = false;
+    } else if(state.pointsPerRound){
       enabled = pointsPerRoundReached();
     } else {
       const current = state.rounds[state.rounds.length - 1];
       enabled = Object.values(current.scores).some(v => v !== 0);
     }
     document.getElementById("next-round-btn").disabled = !enabled;
+
+    const footer = document.getElementById("game-screen-footer");
+    footer.classList.toggle("footer-hidden", !enabled);
+    footer.inert = !enabled;
   }
 
   function endGameNormallyEnabled(){
@@ -1621,7 +1697,7 @@
     banner.innerHTML = "";
     if(winners.length === 1){
       banner.appendChild(el("span", { class: "trophy-big", text: "\u{1F3C6}" }));
-      banner.appendChild(el("div", { class: "winner-name", text: winners[0].team.name + " wins" }));
+      banner.appendChild(el("div", { class: "winner-name", text: winners[0].team.name + " wins!" }));
     } else {
       banner.appendChild(el("span", { class: "trophy-big", text: "\u{1F3C6}" }));
       banner.appendChild(el("div", { class: "winner-name", text: "It's a tie" }));
@@ -1642,6 +1718,38 @@
       ]);
       standings.appendChild(row);
     });
+
+    spawnConfetti();
+  }
+
+  function spawnConfetti(){
+    const layer = document.getElementById("confetti-layer");
+    layer.innerHTML = "";
+    if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const colors = ["#2F7A57", "#B33A3A", "#3A5FB3", "#C9932A", "#7A4FB3"];
+    const pieceCount = 90;
+    let maxLifetime = 0;
+
+    for(let i = 0; i < pieceCount; i++){
+      const duration = 2.6 + Math.random() * 1.6; // seconds
+      const delay = Math.random() * 0.5;
+      maxLifetime = Math.max(maxLifetime, duration + delay);
+
+      const piece = document.createElement("span");
+      piece.className = "confetti-piece";
+      piece.style.setProperty("--left", (Math.random() * 100) + "%");
+      piece.style.setProperty("--size", (5 + Math.random() * 5) + "px");
+      piece.style.setProperty("--piece-color", colors[i % colors.length]);
+      piece.style.setProperty("--piece-radius", Math.random() < 0.3 ? "50%" : "2px");
+      piece.style.setProperty("--duration", duration + "s");
+      piece.style.setProperty("--delay", delay + "s");
+      piece.style.setProperty("--drift", (Math.random() * 160 - 80) + "px");
+      piece.style.setProperty("--spin", (360 + Math.random() * 720) + "deg");
+      layer.appendChild(piece);
+    }
+
+    setTimeout(() => { layer.innerHTML = ""; }, (maxLifetime + 0.3) * 1000);
   }
 
   async function downloadResultsPNG(){
@@ -1686,7 +1794,7 @@
       ctx.font = "600 17px 'Space Grotesk', sans-serif";
       ctx.fillStyle = inkSoft;
       const winnerLine = winners.length === 1
-        ? "\u{1F3C6} " + winners[0].team.name + " wins"
+        ? "\u{1F3C6} " + winners[0].team.name + " wins!"
         : "\u{1F3C6} Tied: " + winners.map(w => w.team.name).join(" & ");
       ctx.fillText(winnerLine, 32, 84);
 
