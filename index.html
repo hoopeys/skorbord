@@ -826,8 +826,44 @@
     padding: 14px 16px;
   }
   .standing-row.winner{
+    position: relative;
+    overflow: visible;
     background: var(--amber-soft);
-    border-color: var(--amber);
+    border-color: transparent;
+  }
+  .standing-row.winner::before,
+  .standing-row.winner::after{
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: calc(var(--radius-md) + 2px);
+    padding: 2px;
+    background: conic-gradient(from var(--border-angle), transparent 0deg, var(--amber) 50deg, #fff6dc 90deg, var(--amber) 130deg, transparent 200deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: border-draw 3.5s linear infinite;
+    pointer-events: none;
+  }
+  .standing-row.winner::before{
+    z-index: 2;
+  }
+  .standing-row.winner::after{
+    z-index: 1;
+    filter: blur(7px);
+    opacity: 0.9;
+  }
+  @property --border-angle{
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+  }
+  @keyframes border-draw{
+    to{ --border-angle: 360deg; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .standing-row.winner::before,
+    .standing-row.winner::after{ animation: none; }
   }
   .standing-left{
     display:flex;
@@ -1691,13 +1727,50 @@
     return { totals, topScore, winners };
   }
 
+  const WIN_PHRASES = [
+    "wins!",
+    "dominates!",
+    "crushes it!",
+    "kicks butt!",
+    "takes the crown!",
+    "reigns supreme!",
+    "brings home the win!",
+    "seals the victory!",
+    "runs the table!",
+    "takes it all!",
+    "clinches the win!",
+    "seals the deal!",
+    "sweeps the competition!",
+    "owns the scoreboard!",
+    "takes the dub!",
+    "obliterates the competition!",
+    "makes it look easy!",
+    "steals the show!",
+    "runs away with it!",
+    "earns bragging rights!",
+    "wins like a boss!",
+    "cleans house!",
+    "smokes the competition!",
+    "shows no mercy!",
+    "puts on a clinic!",
+    "calls game!",
+    "drops the mic!",
+    "makes history!",
+    "wipes the floor with everyone!",
+    "takes no prisoners!",
+    "flexes on the competition!",
+    "wins, obviously!"
+  ];
+  let currentWinPhrase = "wins!";
+
   function renderEnd(){
     const { totals, topScore, winners } = getStandings();
     const banner = document.getElementById("winner-banner");
     banner.innerHTML = "";
     if(winners.length === 1){
+      currentWinPhrase = WIN_PHRASES[Math.floor(Math.random() * WIN_PHRASES.length)];
       banner.appendChild(el("span", { class: "trophy-big", text: "\u{1F3C6}" }));
-      banner.appendChild(el("div", { class: "winner-name", text: winners[0].team.name + " wins!" }));
+      banner.appendChild(el("div", { class: "winner-name", text: winners[0].team.name + " " + currentWinPhrase }));
     } else {
       banner.appendChild(el("span", { class: "trophy-big", text: "\u{1F3C6}" }));
       banner.appendChild(el("div", { class: "winner-name", text: "It's a tie" }));
@@ -1728,12 +1801,12 @@
     if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const colors = ["#2F7A57", "#B33A3A", "#3A5FB3", "#C9932A", "#7A4FB3"];
-    const pieceCount = 90;
+    const pieceCount = 140;
     let maxLifetime = 0;
 
     for(let i = 0; i < pieceCount; i++){
-      const duration = 2.6 + Math.random() * 1.6; // seconds
-      const delay = Math.random() * 0.5;
+      const duration = 1.9 + Math.random() * 1.2; // seconds
+      const delay = Math.random() * 0.4;
       maxLifetime = Math.max(maxLifetime, duration + delay);
 
       const piece = document.createElement("span");
@@ -1794,7 +1867,7 @@
       ctx.font = "600 17px 'Space Grotesk', sans-serif";
       ctx.fillStyle = inkSoft;
       const winnerLine = winners.length === 1
-        ? "\u{1F3C6} " + winners[0].team.name + " wins!"
+        ? "\u{1F3C6} " + winners[0].team.name + " " + currentWinPhrase
         : "\u{1F3C6} Tied: " + winners.map(w => w.team.name).join(" & ");
       ctx.fillText(winnerLine, 32, 84);
 
