@@ -1836,7 +1836,7 @@
       const width = 640;
       const rowHeight = 64;
       const topPad = 150;
-      const bottomPad = 40;
+      const bottomPad = 56;
       const height = topPad + totals.length * rowHeight + bottomPad;
 
       const canvas = document.createElement("canvas");
@@ -1910,6 +1910,16 @@
         ctx.fillText(String(entry.total), width - 52, y + (rowHeight - 12) / 2 + 8);
         ctx.textAlign = "left";
       });
+
+      // timestamp
+      const now = new Date();
+      const timestamp = now.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+        + " · " + now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      ctx.font = "500 12px 'Inter', sans-serif";
+      ctx.fillStyle = inkSoft;
+      ctx.textAlign = "center";
+      ctx.fillText(timestamp, width / 2, height - 24);
+      ctx.textAlign = "left";
 
       const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
       if(!blob) throw new Error("Could not create image");
