@@ -1001,19 +1001,19 @@
           <div class="threshold-field">
             <label for="win-threshold-input">Score to win <span class="threshold-optional">(optional)</span></label>
             <div class="threshold-input-row">
-              <input type="number" id="win-threshold-input" inputmode="numeric" min="1" step="1" placeholder="No limit — play until you end the game">
+              <input type="number" id="win-threshold-input" inputmode="numeric" min="1" max="10000" step="1" placeholder="No limit — play until you end the game">
               <button id="clear-threshold-btn" class="clear-input-btn hidden" type="button" aria-label="Clear score to win" title="Clear">&#10005;</button>
             </div>
-            <div id="win-threshold-error" class="field-error hidden">Enter a whole number greater than 0</div>
+            <div id="win-threshold-error" class="field-error hidden">Enter a whole number from 1 to 10000</div>
           </div>
 
           <div class="threshold-field">
             <label for="points-per-round-input">Round score limit <span class="threshold-optional">(optional)</span></label>
             <div class="threshold-input-row">
-              <input type="number" id="points-per-round-input" inputmode="numeric" min="1" step="1" placeholder="No limit — any score is allowed">
+              <input type="number" id="points-per-round-input" inputmode="numeric" min="1" max="10000" step="1" placeholder="No limit — any score is allowed">
               <button id="clear-points-per-round-btn" class="clear-input-btn hidden" type="button" aria-label="Clear round score limit" title="Clear">&#10005;</button>
             </div>
-            <div id="points-per-round-error" class="field-error hidden">Enter a whole number greater than 0</div>
+            <div id="points-per-round-error" class="field-error hidden">Enter a whole number from 1 to 10000</div>
           </div>
         </div>
       </details>
@@ -1311,9 +1311,9 @@
   // (A native <input type="number"> still lets people type "-3", "3.5", etc.,
   // so this can't rely on the browser's own min/step validation.)
   function parsePositiveInteger(raw){
-    if(!/^\d+$/.test(raw)) return null;
+    if(!/^[1-9]\d*$/.test(raw)) return null; // no leading zeros, no zero itself
     const n = parseInt(raw, 10);
-    return n > 0 ? n : null;
+    return (n > 0 && n <= 10000) ? n : null;
   }
 
   function setFieldValidity(inputId, errorId, isValid){
@@ -1406,80 +1406,109 @@
   }
 
   // ---------- GAME ----------
+  // Persistent references so taps can patch just what changed instead of
+  // tearing down and rebuilding the whole screen every time.
+  let teamTileRefs = {};       // teamId -> { tile, totalSpan, minus, plus }
+  let ledgerRowRefs = [];      // index-aligned with state.rounds -> { tr, cells: { teamId: { td, deltaDiv } } }
+  let ledgerFooterCellRefs = null; // teamId -> td, or null when the footer isn't shown yet
+
   function renderGame(){
+    teamTileRefs = {};
+    renderScoreboardFull();
+    renderLedgerFull();
+    renderThresholdNote();
+    renderPointsPerRoundNote();
+    updateNextRoundButton();
+    updateEndGameButton();
+  }
+
+  function renderScoreboardFull(){
     const board = document.getElementById("scoreboard");
     board.innerHTML = "";
-    const currentRound = state.rounds[state.rounds.length - 1];
     state.teams.forEach(team => {
-      const total = teamTotal(team.id);
-      const totalSpan = el("span", { class: "score-total", text: String(total) });
-
-      const roundDelta = currentRound.scores[team.id] || 0;
-      const dataVisible = roundDelta !== 0;
-      const prev = deltaBadgeState[team.id] || { visible: false, exiting: false };
-
-      let showBadge = false, badgeSign = null, badgeText = null, isEntering = false, isLeaving = false;
-
-      if(dataVisible){
-        badgeSign = roundDelta > 0 ? "pos" : "neg";
-        badgeText = roundDelta > 0 ? "+" + roundDelta : String(roundDelta);
-        isEntering = !prev.visible;
-        showBadge = true;
-        deltaBadgeState[team.id] = { visible: true, exiting: false, sign: badgeSign, text: badgeText };
-      } else if(prev.visible && !prev.exiting){
-        // Just dropped to zero this render — replay the old badge one more frame, fading it out,
-        // then finalize its removal once the animation has had time to finish.
-        badgeSign = prev.sign;
-        badgeText = prev.text;
-        isLeaving = true;
-        showBadge = true;
-        deltaBadgeState[team.id] = { visible: false, exiting: true, sign: prev.sign, text: prev.text };
-        const teamId = team.id;
-        window.setTimeout(() => {
-          // Only finalize if nothing re-triggered the badge in the meantime.
-          if(deltaBadgeState[teamId] && deltaBadgeState[teamId].exiting){
-            deltaBadgeState[teamId] = { visible: false, exiting: false };
-            renderGame();
-          }
-        }, 280);
-      } else {
-        deltaBadgeState[team.id] = { visible: false, exiting: false };
-      }
-
-      const tileChildren = [totalSpan];
-      if(showBadge){
-        const deltaBadge = el("span", {
-          class: "round-delta " + badgeSign + (isEntering ? " pop-in" : "") + (isLeaving ? " pop-out" : ""),
-          text: badgeText,
-          "aria-label": "This round: " + badgeText
-        });
-        deltaBadge.dataset.teamId = team.id;
-        tileChildren.push(deltaBadge);
-      }
-
-      const tileClasses = "score-tile" + (total < 0 ? " negative" : "") + (showBadge ? " has-delta" : "")
-        + (isEntering ? " gap-in" : "") + (isLeaving ? " gap-out" : "");
-      const tile = el("div", { class: tileClasses }, tileChildren);
+      const totalSpan = el("span", { class: "score-total" });
+      const tile = el("div", { class: "score-tile" }, [totalSpan]);
       tile.dataset.teamId = team.id;
 
       const minus = el("button", { class: "score-btn minus", type: "button", "aria-label": "Decrease " + team.name + " score", text: "\u2212" });
-      minus.disabled = wouldExceedPointsPerRound(team.id, -1);
       minus.addEventListener("click", () => adjustScore(team.id, -1));
       const plus = el("button", { class: "score-btn plus", type: "button", "aria-label": "Increase " + team.name + " score", text: "+" });
-      plus.disabled = wouldExceedPointsPerRound(team.id, 1);
       plus.addEventListener("click", () => adjustScore(team.id, 1));
 
       const controls = el("div", { class: "score-controls" }, [minus, plus]);
       const nameLabel = el("div", { class: "team-name", text: team.name });
 
       board.appendChild(el("div", { class: "team-card" }, [nameLabel, tile, controls]));
+      teamTileRefs[team.id] = { tile, totalSpan, minus, plus };
+      updateTeamTile(team.id);
     });
+  }
 
-    renderLedger();
-    renderThresholdNote();
-    renderPointsPerRoundNote();
-    updateNextRoundButton();
-    updateEndGameButton();
+  // Updates one team's tile/badge/buttons in place. Returns whether the badge
+  // just appeared or just started leaving this call, so callers can decide
+  // whether a "bump" pulse would conflict with the enter/exit animation.
+  function updateTeamTile(teamId){
+    const refs = teamTileRefs[teamId];
+    if(!refs) return { justAppeared: false, justLeaving: false };
+
+    const currentRound = state.rounds[state.rounds.length - 1];
+    const total = teamTotal(teamId);
+    refs.totalSpan.textContent = String(total);
+
+    const roundDelta = currentRound.scores[teamId] || 0;
+    const dataVisible = roundDelta !== 0;
+    const prev = deltaBadgeState[teamId] || { visible: false, exiting: false };
+
+    let showBadge = false, badgeSign = null, badgeText = null, isEntering = false, isLeaving = false;
+
+    if(dataVisible){
+      badgeSign = roundDelta > 0 ? "pos" : "neg";
+      badgeText = roundDelta > 0 ? "+" + roundDelta : String(roundDelta);
+      isEntering = !prev.visible;
+      showBadge = true;
+      deltaBadgeState[teamId] = { visible: true, exiting: false, sign: badgeSign, text: badgeText };
+    } else if(prev.visible && !prev.exiting){
+      // Just dropped to zero this update — replay the old badge one more frame, fading it out,
+      // then finalize its removal once the animation has had time to finish.
+      badgeSign = prev.sign;
+      badgeText = prev.text;
+      isLeaving = true;
+      showBadge = true;
+      deltaBadgeState[teamId] = { visible: false, exiting: true, sign: prev.sign, text: prev.text };
+      window.setTimeout(() => {
+        // Only finalize if nothing re-triggered the badge in the meantime.
+        if(deltaBadgeState[teamId] && deltaBadgeState[teamId].exiting){
+          deltaBadgeState[teamId] = { visible: false, exiting: false };
+          updateTeamTile(teamId);
+        }
+      }, 280);
+    } else {
+      deltaBadgeState[teamId] = { visible: false, exiting: false };
+    }
+
+    let badgeEl = refs.tile.querySelector(".round-delta");
+    if(showBadge){
+      if(!badgeEl){
+        badgeEl = el("span", { class: "round-delta" });
+        badgeEl.dataset.teamId = teamId;
+        refs.tile.appendChild(badgeEl);
+      }
+      badgeEl.textContent = badgeText;
+      badgeEl.setAttribute("aria-label", "This round: " + badgeText);
+      badgeEl.className = "round-delta " + badgeSign + (isEntering ? " pop-in" : "") + (isLeaving ? " pop-out" : "");
+    } else if(badgeEl){
+      badgeEl.remove();
+    }
+
+    refs.tile.classList.toggle("negative", total < 0);
+    refs.tile.classList.toggle("has-delta", showBadge);
+    refs.tile.classList.toggle("gap-in", isEntering);
+    refs.tile.classList.toggle("gap-out", isLeaving);
+
+    refs.minus.disabled = wouldExceedPointsPerRound(teamId, -1);
+    refs.plus.disabled = wouldExceedPointsPerRound(teamId, 1);
+
+    return { justAppeared: isEntering, justLeaving: isLeaving };
   }
 
   function thresholdReached(){
@@ -1497,8 +1526,6 @@
     return state.teams.some(t => (current.scores[t.id] || 0) < 0);
   }
 
-  // Would incrementing this team by +1 push the round's total positive points over the cap?
-  // Decreases (and increments that stay at/below zero) never count against the cap.
   // Would this change push the team's OWN round score outside ±pointsPerRound?
   // The cap applies per team individually, not to the combined total across teams.
   function wouldExceedPointsPerRound(teamId, delta){
@@ -1585,80 +1612,147 @@
   function adjustScore(teamId, delta){
     if(wouldExceedPointsPerRound(teamId, delta)) return;
     const current = state.rounds[state.rounds.length - 1];
-    const wasZero = (current.scores[teamId] || 0) === 0;
     current.scores[teamId] = (current.scores[teamId] || 0) + delta;
-    const isNowZero = current.scores[teamId] === 0;
-    const justAppeared = wasZero && !isNowZero;
-    const justDisappeared = !wasZero && isNowZero;
     saveState();
-    renderGame();
 
-    const tile = document.querySelector('.score-tile[data-team-id="' + teamId + '"]');
-    if(tile){
-      tile.classList.remove("bump");
-      void tile.offsetWidth; // force reflow so the animation can restart
-      tile.classList.add("bump");
-    }
+    const { justAppeared, justLeaving } = updateTeamTile(teamId);
+    updateCurrentRoundLedgerRow();
+    updateLedgerTotals();
+    renderThresholdNote();
+    renderPointsPerRoundNote();
+    updateNextRoundButton();
+    updateEndGameButton();
 
-    if(!justAppeared && !justDisappeared){
-      const badge = document.querySelector('.round-delta[data-team-id="' + teamId + '"]');
-      if(badge){
-        badge.classList.remove("bump");
-        void badge.offsetWidth;
-        badge.classList.add("bump");
+    const refs = teamTileRefs[teamId];
+    if(refs){
+      refs.tile.classList.remove("bump");
+      void refs.tile.offsetWidth; // force reflow so the animation can restart
+      refs.tile.classList.add("bump");
+
+      if(!justAppeared && !justLeaving){
+        const badge = refs.tile.querySelector(".round-delta");
+        if(badge){
+          badge.classList.remove("bump");
+          void badge.offsetWidth;
+          badge.classList.add("bump");
+        }
       }
     }
   }
 
-  function renderLedger(){
+  function renderLedgerFull(){
     const head = document.getElementById("ledger-head");
     head.innerHTML = "";
     state.teams.forEach(t => head.appendChild(el("th", { text: t.name })));
 
     const body = document.getElementById("ledger-body");
     body.innerHTML = "";
-
-    let running = {};
-    state.teams.forEach(t => running[t.id] = 0);
-
-    const totalRounds = state.rounds.length;
-    const showTotals = totalRounds > 1;
-
-    state.rounds.forEach((round, i) => {
-      const isCurrent = i === totalRounds - 1;
-      state.teams.forEach(t => { running[t.id] += (round.scores[t.id] || 0); });
-
-      const row = el("tr", { class: isCurrent ? "current-row" : "" });
-      state.teams.forEach((t, teamIdx) => {
-        const delta = round.scores[t.id] || 0;
-        const sign = delta > 0 ? "pos" : delta < 0 ? "neg" : "zero";
-        const deltaText = delta > 0 ? "+" + delta : String(delta);
-        const cellChildren = [ el("div", { class: "cell-delta " + sign, text: deltaText }) ];
-        if(teamIdx === 0){
-          cellChildren.push(el("span", { class: "round-indicator", text: String(i + 1) }));
-        }
-        row.appendChild(el("td", {}, cellChildren));
-      });
-      body.appendChild(row);
-    });
-
-    const foot = document.getElementById("ledger-foot");
-    foot.innerHTML = "";
-    if(showTotals){
-      const captionRow = el("tr", { class: "total-caption-row" });
-      captionRow.appendChild(el("td", { colspan: String(state.teams.length), text: "Total" }));
-      foot.appendChild(captionRow);
-
-      const totalRow = el("tr", { class: "total-row" });
-      state.teams.forEach(t => totalRow.appendChild(el("td", { text: String(running[t.id]) })));
-      foot.appendChild(totalRow);
+    ledgerRowRefs = [];
+    state.rounds.forEach((round, i) => appendLedgerRow(i));
+    if(ledgerRowRefs.length){
+      ledgerRowRefs[ledgerRowRefs.length - 1].tr.classList.add("current-row");
     }
+
+    document.getElementById("ledger-foot").innerHTML = "";
+    ledgerFooterCellRefs = null;
+    updateLedgerTotals();
+  }
+
+  // Builds one ledger row for the given round index and appends it to the
+  // table, recording refs for later in-place updates.
+  function appendLedgerRow(roundIndex){
+    const body = document.getElementById("ledger-body");
+    const round = state.rounds[roundIndex];
+    const row = el("tr", {});
+    const cells = {};
+    state.teams.forEach((t, teamIdx) => {
+      const delta = round.scores[t.id] || 0;
+      const sign = delta > 0 ? "pos" : delta < 0 ? "neg" : "zero";
+      const deltaText = delta > 0 ? "+" + delta : String(delta);
+      const deltaDiv = el("div", { class: "cell-delta " + sign, text: deltaText });
+      const cellChildren = [deltaDiv];
+      if(teamIdx === 0){
+        cellChildren.push(el("span", { class: "round-indicator", text: String(roundIndex + 1) }));
+      }
+      const td = el("td", {}, cellChildren);
+      row.appendChild(td);
+      cells[t.id] = { td, deltaDiv };
+    });
+    body.appendChild(row);
+    ledgerRowRefs[roundIndex] = { tr: row, cells };
+  }
+
+  // Patches just the current round's delta cells — completed rounds never change, so
+  // their rows are never touched once written.
+  function updateCurrentRoundLedgerRow(){
+    const roundIndex = state.rounds.length - 1;
+    const round = state.rounds[roundIndex];
+    const rowRef = ledgerRowRefs[roundIndex];
+    if(!rowRef) return;
+    state.teams.forEach(t => {
+      const cell = rowRef.cells[t.id];
+      if(!cell) return;
+      const delta = round.scores[t.id] || 0;
+      const sign = delta > 0 ? "pos" : delta < 0 ? "neg" : "zero";
+      cell.deltaDiv.textContent = delta > 0 ? "+" + delta : String(delta);
+      cell.deltaDiv.className = "cell-delta " + sign;
+    });
+  }
+
+  // Creates the "Total" footer the first time it's needed; a no-op once it already exists.
+  function ensureLedgerFooter(){
+    const foot = document.getElementById("ledger-foot");
+    if(state.rounds.length <= 1){
+      foot.innerHTML = "";
+      ledgerFooterCellRefs = null;
+      return;
+    }
+    if(ledgerFooterCellRefs) return;
+    foot.innerHTML = "";
+    const captionRow = el("tr", { class: "total-caption-row" });
+    captionRow.appendChild(el("td", { colspan: String(state.teams.length), text: "Total" }));
+    foot.appendChild(captionRow);
+
+    const totalRow = el("tr", { class: "total-row" });
+    ledgerFooterCellRefs = {};
+    state.teams.forEach(t => {
+      const td = el("td", { text: "0" });
+      totalRow.appendChild(td);
+      ledgerFooterCellRefs[t.id] = td;
+    });
+    foot.appendChild(totalRow);
+  }
+
+  function updateLedgerTotals(){
+    ensureLedgerFooter();
+    if(!ledgerFooterCellRefs) return;
+    const running = {};
+    state.teams.forEach(t => running[t.id] = 0);
+    state.rounds.forEach(round => {
+      state.teams.forEach(t => { running[t.id] += (round.scores[t.id] || 0); });
+    });
+    state.teams.forEach(t => {
+      if(ledgerFooterCellRefs[t.id]) ledgerFooterCellRefs[t.id].textContent = String(running[t.id]);
+    });
   }
 
   document.getElementById("next-round-btn").addEventListener("click", () => {
+    const finishedIndex = state.rounds.length - 1;
+    if(ledgerRowRefs[finishedIndex]) ledgerRowRefs[finishedIndex].tr.classList.remove("current-row");
+
     state.rounds.push(emptyRound());
     saveState();
-    renderGame();
+
+    appendLedgerRow(state.rounds.length - 1);
+    ledgerRowRefs[state.rounds.length - 1].tr.classList.add("current-row");
+    updateLedgerTotals();
+
+    state.teams.forEach(t => updateTeamTile(t.id));
+
+    renderThresholdNote();
+    renderPointsPerRoundNote();
+    updateNextRoundButton();
+    updateEndGameButton();
   });
 
   document.getElementById("end-game-btn").addEventListener("click", () => {
@@ -1984,6 +2078,18 @@
   // The light/dark switch itself is pure CSS (see the :has() rules above and
   // the two radio inputs near the top of <body>). This just remembers whichever
   // one the person picked, across visits.
+  function syncThemeColorMeta(){
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(!meta) return;
+    const lightRadio = document.getElementById("theme-light");
+    const darkRadio = document.getElementById("theme-dark");
+    let isDark;
+    if(darkRadio && darkRadio.checked) isDark = true;
+    else if(lightRadio && lightRadio.checked) isDark = false;
+    else isDark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    meta.setAttribute("content", isDark ? "#14171C" : "#1E2A38");
+  }
+
   function initThemePersistence(){
     const lightRadio = document.getElementById("theme-light");
     const darkRadio = document.getElementById("theme-dark");
@@ -2003,8 +2109,21 @@
         }catch(err){
           console.error("Could not save theme preference", err);
         }
+        syncThemeColorMeta();
       });
     });
+
+    if(window.matchMedia){
+      const darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
+      const onSystemChange = () => {
+        // Only matters when neither radio is explicitly checked (i.e. "auto").
+        if(!lightRadio.checked && !darkRadio.checked) syncThemeColorMeta();
+      };
+      if(darkMedia.addEventListener) darkMedia.addEventListener("change", onSystemChange);
+      else if(darkMedia.addListener) darkMedia.addListener(onSystemChange); // older Safari
+    }
+
+    syncThemeColorMeta();
   }
 
   // Runs immediately (not inside the async boot below) since localStorage is
