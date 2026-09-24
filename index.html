@@ -28,7 +28,6 @@
     --tile-text: #F3EFE4;
     --tile-green: #7FE0AE;
     --tile-red: #FF9B90;
-    --tile-neutral: rgba(243,239,228,0.5);
     --on-ink: #F3EFE4;
     --green: #2F7A57;
     --green-soft: #DCEBE2;
@@ -1254,7 +1253,7 @@
 
     const addBtn = document.getElementById("add-team-btn");
     addBtn.disabled = state.teams.length >= MAX_TEAMS;
-    addBtn.textContent = state.teams.length >= MAX_TEAMS ? "Maximum of 5 teams" : "+ Add team";
+    addBtn.textContent = state.teams.length >= MAX_TEAMS ? `Maximum of ${MAX_TEAMS} teams` : "+ Add team";
 
     const thresholdInput = document.getElementById("win-threshold-input");
     thresholdInput.value = state.winThreshold ? String(state.winThreshold) : "";
@@ -1401,7 +1400,10 @@
   }
 
   function teamColor(idx){
-    const palette = ["#2F7A57", "#B33A3A", "#3A5FB3", "#C9932A", "#7A4FB3"];
+    // Cycles via modulo, so this never breaks or needs to be kept in sync with
+    // MAX_TEAMS — it just starts repeating colors if the team count ever
+    // exceeds the palette's length (a few extra entries here for headroom).
+    const palette = ["#2F7A57", "#B33A3A", "#3A5FB3", "#C9932A", "#7A4FB3", "#2A8F94", "#B36B2A", "#5C8A3A"];
     return palette[idx % palette.length];
   }
 
@@ -2020,7 +2022,10 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "skorbord-results.png";
+      const pad = n => String(n).padStart(2, "0");
+      const filenameStamp = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate())
+        + "-" + pad(now.getHours()) + pad(now.getMinutes());
+      a.download = "skorbord-results-" + filenameStamp + ".png";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -2054,7 +2059,7 @@
 
   document.getElementById("download-png-btn").addEventListener("click", downloadResultsPNG);
 
-  document.getElementById("new-game-btn").addEventListener("click", async () => {
+  document.getElementById("new-game-btn").addEventListener("click", () => {
     if(!confirm("Start a new game? This will clear the current results.")) return;
     const oldNames = state.teams.map(t => t.name);
     const oldThreshold = state.winThreshold;
@@ -2068,7 +2073,7 @@
         state.teams.push({ id: makeId(), name: state.teams.length === 0 ? "Us" : "Them" });
       }
     }
-    await clearState();
+    clearState();
     deltaBadgeState = {};
     saveState();
     render();
@@ -2131,10 +2136,8 @@
   initThemePersistence();
 
   // ---------- boot ----------
-  (async function init(){
-    state = await loadState();
-    render();
-  })();
+  state = loadState();
+  render();
 })();
 </script>
 
