@@ -955,12 +955,72 @@
     .score-btn.minus:hover{ background: var(--red); color: var(--on-ink); }
     .score-btn.plus:hover{ background: var(--green); color: var(--on-ink); }
   }
+
+  .app-modal{
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .app-modal.hidden{ display: none; }
+  .app-modal-backdrop{
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+  }
+  .app-modal-card{
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 22px 20px 20px;
+    animation: app-modal-in 0.16s ease;
+  }
+  @keyframes app-modal-in{
+    from{ opacity: 0; transform: translateY(6px) scale(0.98); }
+    to{ opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .app-modal-card{ animation: none; }
+  }
+  .app-modal-message{
+    margin: 0 0 18px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  .app-modal-actions{
+    display: flex;
+    gap: 10px;
+  }
+  .app-modal-actions button{
+    flex: 1;
+    margin-top: 0;
+  }
 </style>
 </head>
 <body>
 
 <input type="radio" name="theme-mode" id="theme-light" class="visually-hidden">
 <input type="radio" name="theme-mode" id="theme-dark" class="visually-hidden">
+
+<div id="app-modal" class="app-modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="app-modal-message">
+  <div id="app-modal-backdrop" class="app-modal-backdrop"></div>
+  <div class="app-modal-card">
+    <p id="app-modal-message" class="app-modal-message"></p>
+    <div class="app-modal-actions">
+      <button id="app-modal-cancel" class="secondary-btn" type="button">Cancel</button>
+      <button id="app-modal-confirm" class="primary-btn" type="button">OK</button>
+    </div>
+  </div>
+</div>
 
 <div class="wrap">
 
@@ -1180,6 +1240,47 @@
     }
     (children || []).forEach(c => c && node.appendChild(c));
     return node;
+  }
+
+  // ---------- custom modal (replaces native confirm()/alert()) ----------
+  function showAppModal(message, opts){
+    opts = opts || {};
+    const confirmLabel = opts.confirmLabel || "OK";
+    const cancelLabel = opts.cancelLabel || "Cancel";
+    const showCancel = opts.showCancel !== false;
+
+    return new Promise(resolve => {
+      const modal = document.getElementById("app-modal");
+      const messageEl = document.getElementById("app-modal-message");
+      const cancelBtn = document.getElementById("app-modal-cancel");
+      const confirmBtn = document.getElementById("app-modal-confirm");
+      const backdrop = document.getElementById("app-modal-backdrop");
+
+      messageEl.textContent = message;
+      confirmBtn.textContent = confirmLabel;
+      cancelBtn.textContent = cancelLabel;
+      cancelBtn.classList.toggle("hidden", !showCancel);
+
+      function cleanup(result){
+        modal.classList.add("hidden");
+        confirmBtn.removeEventListener("click", onConfirm);
+        cancelBtn.removeEventListener("click", onCancel);
+        backdrop.removeEventListener("click", onCancel);
+        document.removeEventListener("keydown", onKeydown);
+        resolve(result);
+      }
+      function onConfirm(){ cleanup(true); }
+      function onCancel(){ cleanup(false); }
+      function onKeydown(e){ if(e.key === "Escape") onCancel(); }
+
+      confirmBtn.addEventListener("click", onConfirm);
+      cancelBtn.addEventListener("click", onCancel);
+      backdrop.addEventListener("click", onCancel);
+      document.addEventListener("keydown", onKeydown);
+
+      modal.classList.remove("hidden");
+      confirmBtn.focus();
+    });
   }
 
   // ---------- render dispatch ----------
@@ -1757,10 +1858,10 @@
     updateEndGameButton();
   });
 
-  document.getElementById("end-game-btn").addEventListener("click", () => {
+  document.getElementById("end-game-btn").addEventListener("click", async () => {
     if(holdJustFired){ holdJustFired = false; return; } // avoid double-triggering after a completed hold
     if(!endGameNormallyEnabled()) return;
-    if(!confirm("End the game and show final results?")) return;
+    if(!(await showAppModal("End the game and show final results?"))) return;
     state.status = "ended";
     saveState();
     render();
@@ -2032,7 +2133,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     }catch(err){
       console.error("Could not export PNG", err);
-      alert("Sorry, the image couldn't be created.");
+      await showAppModal("Sorry, the image couldn't be created.", { showCancel: false });
     }finally{
       btn.disabled = false;
     }
@@ -2059,8 +2160,8 @@
 
   document.getElementById("download-png-btn").addEventListener("click", downloadResultsPNG);
 
-  document.getElementById("new-game-btn").addEventListener("click", () => {
-    if(!confirm("Start a new game? This will clear the current results.")) return;
+  document.getElementById("new-game-btn").addEventListener("click", async () => {
+    if(!(await showAppModal("Start a new game? This will clear the current results."))) return;
     const oldNames = state.teams.map(t => t.name);
     const oldThreshold = state.winThreshold;
     const oldPointsPerRound = state.pointsPerRound;
